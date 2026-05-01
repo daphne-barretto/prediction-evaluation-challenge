@@ -1,4 +1,4 @@
-"""labeling.py — Optional adaptive labeling strategy.
+"""Sample adaptive labeling strategy for the Predictive AI Evaluation Challenge.
 
 This file is OPTIONAL. If included in your submission, the ingestion program
 calls acquisition_function() once per hidden (model_id, item_id) pair, BEFORE
@@ -9,8 +9,8 @@ within each category, and passes those labeled inputs to predict() as the
 
 If you don't include this file, the platform reveals a default per-category
 random sample of labels. If acquisition_function() raises, times out, or
-returns a non-finite value for any candidate, the platform falls back to that
-same random-selection default for the round.
+returns a non-finite value for any candidate, the platform uses that same
+random-selection fallback for the round.
 """
 
 from __future__ import annotations
@@ -25,6 +25,4 @@ def acquisition_function(input: dict) -> float:
         Same shape as the `input` passed to predict():
         keys benchmark, condition, subject_content, item_content.
     """
-    # TODO: Replace with your acquisition strategy.
-    # Ideas: diversity sampling, uncertainty sampling, farthest-point, etc.
     return 0.0

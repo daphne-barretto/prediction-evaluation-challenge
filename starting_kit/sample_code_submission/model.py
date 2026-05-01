@@ -1,8 +1,12 @@
-"""model.py — Required entry point for the Predictive AI Evaluation Challenge.
+"""Sample code submission for the Predictive AI Evaluation Challenge.
 
-The ingestion program calls predict() once per hidden (model_id, item_id) pair.
-Module-level code runs once when the container starts. Load weights, tokenizers,
-prompt templates here. Heavy training must be done OFFLINE (e.g. publish a model
+Your submission must define a single function:
+
+    predict(input: dict, labeled: list[dict] | None = None) -> float
+
+The ingestion program calls predict() once per hidden (model_id, item_id) pair. Module-level code
+runs once when the container starts. Load weights, tokenizers, prompt
+templates here. Heavy training must be done OFFLINE (e.g. publish a model
 to HuggingFace and load it at module init).
 
 `input` keys
@@ -32,17 +36,9 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 # Module-level init: runs once when the container starts.
 # Replace this with model loading, tokenizer setup, prompt templates, etc.
-#
-# Example:
-#   from sentence_transformers import SentenceTransformer
-#   import torch
-#   ENCODER = SentenceTransformer("all-mpnet-base-v2")
-#   NCF = torch.load("artifacts/ncf_head.pt", map_location="cpu")
-#   NCF.eval()
 # ---------------------------------------------------------------------------
 
 
 def predict(input: dict, labeled: list[dict] | None = None) -> float:
     """Return the predicted probability that the subject answers correctly."""
-    # TODO: Replace with your trained model logic.
     return 0.5

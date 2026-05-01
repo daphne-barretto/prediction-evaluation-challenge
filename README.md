@@ -15,7 +15,14 @@ Given four text fields describing a (subject, item, benchmark, condition) tuple,
 ├── validate.py           # Local validation / smoke-test script
 ├── requirements.txt      # Python dependencies
 ├── models.txt            # HuggingFace model repos needed at runtime
-└── artifacts/            # Trained model weights (gitignored if large)
+├── artifacts/            # Trained model weights (gitignored if large)
+└── starting_kit/         # Official starter kit from Codabench (reference)
+    ├── README.md
+    ├── sample_code_submission/
+    ├── templates/
+    │   ├── hf_submission/    # Template for HuggingFace model submissions
+    │   └── labeling_addon/   # Template for adaptive labeling
+    └── example_code/
 ```
 
 ## Quick Start
@@ -24,18 +31,41 @@ Given four text fields describing a (subject, item, benchmark, condition) tuple,
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Download training data
-python -c "from datasets import load_dataset; load_dataset('aims-foundations/measurement-db', split='train')"
-
-# 3. Train offline (produces artifacts/)
+# 2. Train offline (downloads data from HuggingFace, produces artifacts/)
 python train.py
 
-# 4. Local smoke test
+# 3. Local smoke test
 python validate.py
 
-# 5. Package for submission
+# 4. Package for submission
 zip -r submission.zip model.py labeling.py requirements.txt models.txt artifacts/
 ```
+
+## Loading Training Data
+
+The HuggingFace repo is a collection of Parquet tables, **not** a single `datasets` split. Do **not** use `load_dataset("aims-foundations/measurement-db")` directly — it may mix response tables with trace tables that have different schemas.
+
+Load response tables explicitly and join with registry tables:
+
+```python
+from datasets import Features, Value, load_dataset
+from huggingface_hub import HfApi
+
+REPO_ID = "aims-foundations/measurement-db"
+REGISTRY_FILES = {"subjects.parquet", "items.parquet", "benchmarks.parquet"}
+
+repo_files = HfApi().list_repo_files(repo_id=REPO_ID, repo_type="dataset")
+response_files = sorted(
+    name for name in repo_files
+    if name.endswith(".parquet")
+    and name not in REGISTRY_FILES
+    and not name.endswith("_traces.parquet")
+)
+
+# See train.py for the full loading pipeline with proper feature schema.
+```
+
+See `starting_kit/README.md` for complete data loading documentation.
 
 ## Submission Format
 
@@ -46,7 +76,7 @@ Upload a ZIP to [Codabench](https://aimslab.stanford.edu/competition/submit) con
 | `model.py` | ✅ | Must define `predict(input, labeled=None) -> float` |
 | `labeling.py` | ❌ | May define `acquisition_function(input) -> float` |
 | `requirements.txt` | ❌ | Python packages to install in the sandbox |
-| `models.txt` | ❌ | HuggingFace model repos to pre-fetch |
+| `models.txt` | ❌ | HuggingFace model repos to pre-fetch (max 5) |
 
 ## Input Format
 
@@ -69,11 +99,22 @@ Each input is a dict with four string keys:
 
 Each round reveals K=5 ground-truth labels per category (m=5 categories per round → 25 labels total). Use `labeling.py` to define an acquisition function that selects which items get labeled. The labeled inputs are passed to `predict()` via the `labeled` argument.
 
+## GPU Tiers
+
+| Max params | GPU tier | Timeout |
+|------------|----------|---------|
+| ≤ 1B | T4 | 30 min |
+| ≤ 8B | L4 | 30 min |
+| ≤ 20B | A100 | 30 min |
+| ≤ 70B | A100-4 / H100 | 60 min |
+| ≤ 140B | A100-8 | 60 min |
+| ≤ 250B | A100-mega | 60 min |
+
 ## Rules
 
 - Teams of 1–3 students
 - One scored submission per team per calendar day (UTC)
-- Sandbox is **network-isolated** at test time — no API calls from `predict()` or `acquisition_function()`
+- Sandbox is **network-isolated** at test time — no API calls
 - All models must be bundled in the ZIP or declared in `models.txt`
 - No state persists across rounds (fresh container each time)
 

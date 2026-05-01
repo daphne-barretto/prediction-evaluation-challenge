@@ -21,6 +21,9 @@ artifacts/*.npy
 # Keep small JSON artifacts
 !artifacts/*.json
 
+# HuggingFace cache
+.hf_cache/
+
 # IDE
 .vscode/
 .idea/
