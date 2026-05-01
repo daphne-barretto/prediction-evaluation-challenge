@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Model artifacts (large files — track selectively)
+artifacts/*.pt
+artifacts/*.bin
+artifacts/*.safetensors
+artifacts/*.npy
+
+# Keep small JSON artifacts
+!artifacts/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Submission ZIPs
+submission.zip
+*.zip
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data cache
+data/
+*.parquet
+*.arrow

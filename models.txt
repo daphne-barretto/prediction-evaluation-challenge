@@ -1,0 +1,6 @@
+# HuggingFace model repos to pre-fetch into the submission container.
+# One repo per line. The platform downloads these before the container starts.
+#
+# Examples:
+# sentence-transformers/all-mpnet-base-v2
+# Qwen/Qwen2.5-7B-Instruct
