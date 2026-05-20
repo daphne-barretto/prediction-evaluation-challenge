@@ -4,3 +4,6 @@
 # Examples:
 # sentence-transformers/all-mpnet-base-v2
 # Qwen/Qwen2.5-7B-Instruct
+#sentence-transformers/paraphrase-MiniLM-L3-v2
+#sentence-transformers/all-MiniLM-L6-v2
+sentence-transformers/all-mpnet-base-v2 
