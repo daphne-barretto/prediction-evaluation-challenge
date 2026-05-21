@@ -1,0 +1,41 @@
+{
+  "model_name": "baseline_repro",
+  "notes": "Reproduction of commit 40976e8's baseline (the one that scored -0.70). Trained fresh on personal Modal workspace via app ap-fGYnArG8X4o2M44KNzUify into volume eval-artifacts-baseline. Architecture: paraphrase-MiniLM-L3-v2 encoder (384-d), one-hot benchmark/condition, 4-layer MLP (256-128-64-1), Newton-Raphson theta adjustment from K=5 labels. NO mean-acc features, NO subject embeddings, NO Platt. The model.py and labeling.py in this submission are written fresh because commit 40976e8's model.py is inconsistent with its train_modal.py (model.py references subject_emb_index.json and subject_embeddings.npy which train_modal.py never produces). Sanity check: does our reproduction land near -0.70 on the leaderboard?",
+  "hyperparams": {
+    "encoder": "sentence-transformers/paraphrase-MiniLM-L3-v2",
+    "encoder_dim": 384,
+    "input_dim": 448,
+    "mlp_layers": "256-128-64-1 (no LayerNorm, Dropout 0.2/0.2)",
+    "mlp_epochs": 15,
+    "mlp_lr": 0.003,
+    "irt_max_epochs": 1000,
+    "kmeans_clusters": 64,
+    "k_shot_method": "newton_raphson_theta",
+    "k_shot_steps": 10,
+    "k_shot_reg": 0.1,
+    "platt_disabled": true,
+    "parent_commit": "40976e8"
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "labeling.py",
+    "models.txt",
+    "requirements.txt",
+    "artifacts/bundle.pkl",
+    "artifacts/mlp.pt",
+    "artifacts/mlp_config.json",
+    "artifacts/theta.npy",
+    "artifacts/item_a.npy",
+    "artifacts/item_b.npy",
+    "artifacts/centroids.npy",
+    "artifacts/subject_id_lookup.json",
+    "artifacts/subject_name_lookup.json",
+    "artifacts/bm_columns.json",
+    "artifacts/cond_columns.json",
+    "artifacts/X_mean.npy",
+    "artifacts/X_std.npy"
+  ]
+}

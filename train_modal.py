@@ -1,5 +1,21 @@
 """
-train_modal.py — Run the full training pipeline on Modal GPU.
+train_modal.py — Full training pipeline on Modal GPU.
+
+Pipeline:
+  1. Load HF response/items/subjects/benchmarks tables.
+  2. Binarize labels per benchmark convention.
+  3. Fit 2PL IRT on the dense response sub-matrix to get theta per subject.
+  4. Encode subjects, items, benchmark names, and condition names with
+     all-mpnet-base-v2 (768d).
+  5. Build feature matrix:
+        [theta(1) | subject_emb(768) | item_emb(768) |
+         benchmark_emb(768) | condition_emb(768) |
+         subject_mean_acc(1) | benchmark_mean_acc(1)]
+     (input_dim = 3075)
+  6. Cold-start validation: hold out 2 entire benchmarks, evaluate
+     calibrated NLL on those rows after training on the rest.
+  7. Platt calibration: hold out 10% of remaining rows, fit a*logit + b
+     via sklearn LogisticRegression on logits.
 
 Usage:
     modal run train_modal.py
@@ -28,17 +44,25 @@ image = (
 volume = modal.Volume.from_name("eval-artifacts", create_if_missing=True)
 
 
+ENCODER_NAME = "all-mpnet-base-v2"
+ENCODER_DIM  = 768
+COLD_START_HOLDOUT_BENCHMARKS = 2   # number of entire benchmarks held out for cold-start eval
+PLATT_HOLDOUT_FRAC            = 0.10
+
+
 @app.function(
     image=image,
     gpu="T4",
     timeout=3600,
+    memory=65536,
+    cpu=4.0,
     volumes={"/artifacts": volume},
 )
 def run_training():
     import sys
     sys.path.insert(0, "/tmp/torch_measure/src")
 
-    import os, json, pickle
+    import os, json, pickle, gc
     import numpy as np
     import pandas as pd
     import torch
@@ -48,6 +72,7 @@ def run_training():
     from huggingface_hub import HfApi
     from sentence_transformers import SentenceTransformer
     from sklearn.cluster import MiniBatchKMeans
+    from sklearn.linear_model import LogisticRegression
     from torch_measure.models import TwoPL
 
     REPO_ID        = "aims-foundations/measurement-db"
@@ -190,50 +215,177 @@ def run_training():
     print("\nTop 5:"); [print(f"  {n[:50]:50s}  {v:.3f}") for n, v in ranked[:5]]
     print("Bottom 5:"); [print(f"  {n[:50]:50s}  {v:.3f}") for n, v in ranked[-5:]]
 
-    # ── 6. Encode dense items ──────────────────────────────────────────────────
-    ENCODER_NAME = "paraphrase-MiniLM-L3-v2"
-    encoder      = SentenceTransformer(ENCODER_NAME)
+    # ── 6. Encode with all-mpnet-base-v2 ───────────────────────────────────────
+    encoder = SentenceTransformer(ENCODER_NAME, device=device)
+    print(f"\nLoaded encoder: {ENCODER_NAME}")
+    print(f"Encoder embedding dim: {encoder.get_sentence_embedding_dimension()}")
+    assert encoder.get_sentence_embedding_dimension() == ENCODER_DIM, (
+        f"Encoder dim mismatch: got {encoder.get_sentence_embedding_dimension()}, "
+        f"expected {ENCODER_DIM}"
+    )
+
     print(f"\nEncoding {len(item_texts_dense):,} dense items...")
-    V_dense = encoder.encode(item_texts_dense, batch_size=256,
+    V_dense = encoder.encode(item_texts_dense, batch_size=128,
                              show_progress_bar=True, convert_to_numpy=True)
-    V_all = np.zeros((n_items, V_dense.shape[1]), dtype=np.float32)
-    V_all[dense_indices] = V_dense
-    print(f"Embeddings: {V_all.shape}")
+    V_all = np.zeros((n_items, ENCODER_DIM), dtype=np.float32)
+    V_all[dense_indices] = V_dense.astype(np.float32)
+    print(f"Item embeddings: {V_all.shape}")
 
-    # ── 7. Build feature matrix ────────────────────────────────────────────────
-    bm_dummies   = pd.get_dummies(pd.Series(dense_benchmarks), prefix="bm").astype(np.float32)
-    cond_dummies = pd.get_dummies(pd.Series(dense_conditions), prefix="cond").astype(np.float32)
-    bm_columns   = bm_dummies.columns.tolist()
-    cond_columns = cond_dummies.columns.tolist()
+    print(f"\nEncoding {n_subjects:,} subjects...")
+    V_subjects = encoder.encode(subject_texts, batch_size=128,
+                                show_progress_bar=True, convert_to_numpy=True).astype(np.float32)
+    print(f"Subject embeddings: {V_subjects.shape}")
 
+    # Save subject embeddings immediately (model.py needs this artifact).
+    np.save(f"{ARTIFACTS_DIR}/subject_embeddings.npy", V_subjects)
+
+    # subject_emb_index keyed by display_name (what the test-time lookup uses)
+    subject_emb_index = {}
+    for sid in subject_ids:
+        i = subject_index[sid]
+        display_name = subject_texts[i].split("\n")[0].replace("Name: ", "").strip()
+        subject_emb_index[display_name] = int(i)
+
+    # ── 7. Encode unique benchmarks & conditions as text ───────────────────────
+    unique_benchmarks = sorted(set(dense_benchmarks))
+    unique_conditions = sorted(set(dense_conditions))
+    print(f"\nEncoding {len(unique_benchmarks)} unique benchmarks "
+          f"and {len(unique_conditions)} unique conditions...")
+
+    bm_texts   = [f"Benchmark: {b}" for b in unique_benchmarks]
+    cond_texts = [f"Condition: {c}" for c in unique_conditions]
+    bm_emb_matrix   = encoder.encode(bm_texts,   batch_size=64,
+                                     convert_to_numpy=True).astype(np.float32)
+    cond_emb_matrix = encoder.encode(cond_texts, batch_size=64,
+                                     convert_to_numpy=True).astype(np.float32)
+    bm_idx   = {b: i for i, b in enumerate(unique_benchmarks)}
+    cond_idx = {c: i for i, c in enumerate(unique_conditions)}
+    bm_emb_lookup   = {b: bm_emb_matrix[bm_idx[b]].tolist()   for b in unique_benchmarks}
+    cond_emb_lookup = {c: cond_emb_matrix[cond_idx[c]].tolist() for c in unique_conditions}
+
+    # ── 8. Cold-start benchmark split & mean-acc maps ──────────────────────────
+    bm_counts = pd.Series(dense_benchmarks).value_counts().sort_values()
+    candidates = [b for b in bm_counts.index if bm_counts[b] >= 50]
+    rng_split = np.random.default_rng(42)
+    if len(candidates) >= COLD_START_HOLDOUT_BENCHMARKS:
+        heldout_benchmarks = sorted(
+            rng_split.choice(candidates, size=COLD_START_HOLDOUT_BENCHMARKS,
+                             replace=False).tolist()
+        )
+    else:
+        heldout_benchmarks = sorted(candidates)
+    print(f"\nCold-start holdout benchmarks: {heldout_benchmarks}")
+
+    # mean-acc maps computed on NON-heldout rows only (simulating cold-start: at
+    # test time, unseen benchmarks fall back to the global mean)
+    train_only_df = train_df[~train_df["benchmark"].isin(heldout_benchmarks)]
+    global_mean_acc = float(train_only_df["label"].mean())
+
+    subject_mean_acc_by_sid = (
+        train_only_df.groupby("subject_id")["label"].mean().to_dict()
+    )
+    subject_mean_acc_lookup = {}
+    for sid, acc in subject_mean_acc_by_sid.items():
+        i = subject_index[sid]
+        display_name = subject_texts[i].split("\n")[0].replace("Name: ", "").strip()
+        subject_mean_acc_lookup[display_name] = float(acc)
+
+    benchmark_mean_acc_lookup = {
+        bm: float(acc) for bm, acc in
+        train_only_df.groupby("benchmark")["label"].mean().to_dict().items()
+    }
+    print(f"global_mean_acc (non-heldout): {global_mean_acc:.4f}")
+
+    # ── 9. Build per-split feature matrices (memory-conscious) ─────────────────
+    # Avoid materializing one giant X_all (3.4M × 3075 ≈ 42 GB) followed by
+    # slice copies and a normalized copy. Instead, compute the index arrays for
+    # each split first, then build only that split's X matrix and normalize
+    # in-place. Peak memory ≈ size of the train split.
     rows_i, rows_j = np.where(~np.isnan(R_dense))
-    y_train        = R_dense[rows_i, rows_j].astype(np.float32)
+    y_all          = R_dense[rows_i, rows_j].astype(np.float32)
     orig_j         = dense_indices[rows_j]
-    X_train        = np.hstack([
-        theta[rows_i].reshape(-1, 1),
-        V_all[orig_j],
-        bm_dummies.values[rows_j],
-        cond_dummies.values[rows_j],
-    ]).astype(np.float32)
+    bm_row_idx     = np.array([bm_idx[dense_benchmarks[j]]   for j in rows_j], dtype=np.int64)
+    cond_row_idx   = np.array([cond_idx[dense_conditions[j]] for j in rows_j], dtype=np.int64)
+
+    subject_mean_acc_per_subject = np.full(n_subjects, global_mean_acc, dtype=np.float32)
+    for sid, i in subject_index.items():
+        if sid in subject_mean_acc_by_sid:
+            subject_mean_acc_per_subject[i] = float(subject_mean_acc_by_sid[sid])
+
+    benchmark_mean_acc_per_denseitem = np.full(len(dense_indices), global_mean_acc,
+                                               dtype=np.float32)
+    for k, bm in enumerate(dense_benchmarks):
+        if bm in benchmark_mean_acc_lookup:
+            benchmark_mean_acc_per_denseitem[k] = benchmark_mean_acc_lookup[bm]
+
+    # Split indices: cold-start vs (Platt holdout vs train).
+    row_benchmarks = np.array([dense_benchmarks[j] for j in rows_j])
+    cs_mask        = np.isin(row_benchmarks, heldout_benchmarks)
+    cs_idx         = np.where(cs_mask)[0]
+    keep_idx       = np.where(~cs_mask)[0]
+    rng_platt      = np.random.default_rng(7)
+    perm           = rng_platt.permutation(len(keep_idx))
+    n_platt        = max(1000, int(PLATT_HOLDOUT_FRAC * len(keep_idx)))
+    platt_idx      = keep_idx[perm[:n_platt]]
+    train_idx      = keep_idx[perm[n_platt:]]
+    print(f"\nCold-start rows: {len(cs_idx):,}   "
+          f"Platt rows: {len(platt_idx):,}   MLP train rows: {len(train_idx):,}")
+
+    expected_input_dim = 1 + 4 * ENCODER_DIM + 2
+
+    def build_X(idx: np.ndarray) -> np.ndarray:
+        si = rows_i[idx]; oj = orig_j[idx]
+        bri = bm_row_idx[idx]; cri = cond_row_idx[idx]
+        rj  = rows_j[idx]
+        return np.hstack([
+            theta[si].reshape(-1, 1).astype(np.float32, copy=False),
+            V_subjects[si],
+            V_all[oj],
+            bm_emb_matrix[bri],
+            cond_emb_matrix[cri],
+            subject_mean_acc_per_subject[si].reshape(-1, 1),
+            benchmark_mean_acc_per_denseitem[rj].reshape(-1, 1),
+        ])
+
+    print("Building X_train ...")
+    X_train = build_X(train_idx); y_train = y_all[train_idx]
+    print(f"  X_train: {X_train.shape}")
+    print("Building X_platt ...")
+    X_platt = build_X(platt_idx); y_platt = y_all[platt_idx]
+    print(f"  X_platt: {X_platt.shape}")
+    print("Building X_cs ...")
+    X_cs    = build_X(cs_idx);    y_cs    = y_all[cs_idx]
+    print(f"  X_cs:    {X_cs.shape}")
+
     input_dim = X_train.shape[1]
-    print(f"\nTraining pairs: {len(y_train):,}  Input dim: {input_dim}")
-    print(f"Label mean: {y_train.mean():.3f}")
+    print(f"input_dim={input_dim}   expected={expected_input_dim}")
+    assert input_dim == expected_input_dim, (
+        f"input_dim mismatch: got {input_dim}, expected {expected_input_dim}"
+    )
 
-    # ── 8. Normalize features ──────────────────────────────────────────────────
-    X_mean = X_train.mean(axis=0)
-    X_std  = X_train.std(axis=0) + 1e-8
-    X_norm = (X_train - X_mean) / X_std
+    # ── 10. Normalize in-place ─────────────────────────────────────────────────
+    X_mean = X_train.mean(axis=0).astype(np.float32)
+    X_std  = (X_train.std(axis=0) + 1e-8).astype(np.float32)
+    for arr in (X_train, X_platt, X_cs):
+        arr -= X_mean
+        arr /= X_std
+    print(f"X_train (normalized) mean: {X_train.mean():.4f}   std: {X_train.std():.4f}")
 
-    # Sanity check normalization
-    print(f"X_norm mean: {X_norm.mean():.4f}  std: {X_norm.std():.4f}")
+    # Free arrays no longer needed.
+    del rows_i, rows_j, orig_j, bm_row_idx, cond_row_idx, row_benchmarks
+    del cs_mask, cs_idx, keep_idx, perm, platt_idx, train_idx
+    del V_all, V_subjects, bm_emb_matrix, cond_emb_matrix
+    del subject_mean_acc_per_subject, benchmark_mean_acc_per_denseitem
+    gc.collect()
 
-    # ── 9. Fit MLP ─────────────────────────────────────────────────────────────
+    # ── 11. Fit MLP ────────────────────────────────────────────────────────────
     class ResponseMLP(nn.Module):
         def __init__(self, input_dim):
             super().__init__()
             self.net = nn.Sequential(
-                nn.Linear(input_dim, 256), nn.ReLU(), nn.Dropout(0.2),
-                nn.Linear(256, 128),       nn.ReLU(), nn.Dropout(0.2),
+                nn.Linear(input_dim, 512), nn.LayerNorm(512), nn.ReLU(), nn.Dropout(0.2),
+                nn.Linear(512, 256),       nn.LayerNorm(256), nn.ReLU(), nn.Dropout(0.2),
+                nn.Linear(256, 128),       nn.LayerNorm(128), nn.ReLU(), nn.Dropout(0.1),
                 nn.Linear(128, 64),        nn.ReLU(),
                 nn.Linear(64, 1),
             )
@@ -241,10 +393,10 @@ def run_training():
             return self.net(x).squeeze(-1)
 
     dataset = TensorDataset(
-        torch.tensor(X_norm,  dtype=torch.float32),
-        torch.tensor(y_train, dtype=torch.float32),
+        torch.from_numpy(X_train),
+        torch.from_numpy(y_train),
     )
-    loader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=2)
+    loader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=0)
 
     mlp       = ResponseMLP(input_dim).to(device)
     optimizer = torch.optim.Adam(mlp.parameters(), lr=3e-3, weight_decay=1e-4)
@@ -257,72 +409,129 @@ def run_training():
         mlp.train()
         total_loss, n_batches = 0.0, 0
         for X_batch, y_batch in loader:
-            X_batch = X_batch.to(device)
-            y_batch = y_batch.to(device)
+            X_batch = X_batch.to(device); y_batch = y_batch.to(device)
             optimizer.zero_grad()
             logits = mlp(X_batch)
             loss   = criterion(logits, y_batch)
             loss.backward()
-            # Gradient clipping to prevent explosion
             torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=1.0)
             optimizer.step()
-            total_loss += loss.item()
-            n_batches  += 1
+            total_loss += loss.item(); n_batches += 1
         scheduler.step()
-        avg_loss = total_loss / n_batches
-        print(f"  Epoch {epoch+1}/{N_EPOCHS}  loss={avg_loss:.5f}  lr={scheduler.get_last_lr()[0]:.6f}")
+        print(f"  Epoch {epoch+1}/{N_EPOCHS}  loss={total_loss/n_batches:.5f}  "
+              f"lr={scheduler.get_last_lr()[0]:.6f}")
 
-    # Sanity check predictions
     mlp.eval()
-    with torch.no_grad():
-        sample = torch.tensor(X_norm[:1000], dtype=torch.float32).to(device)
-        logits = mlp(sample).cpu().numpy()
-        probs  = 1 / (1 + np.exp(-logits))
-    print(f"\nSanity check on 1000 train samples:")
-    print(f"  Pred mean: {probs.mean():.3f}  std: {probs.std():.3f}")
-    print(f"  Pred range: [{probs.min():.3f}, {probs.max():.3f}]")
+    # Free training tensor & numpy now that MLP is fit.
+    del dataset, loader
+    gc.collect()
 
-    # ── 10. Fit k-means centroids ──────────────────────────────────────────────
-    print("\nFitting k-means centroids...")
-    rng        = np.random.default_rng(0)
+    def _forward_logits(x_n_np: np.ndarray, batch: int = 8192) -> np.ndarray:
+        out = []
+        with torch.no_grad():
+            for k in range(0, len(x_n_np), batch):
+                xb = torch.from_numpy(
+                    np.ascontiguousarray(x_n_np[k:k+batch])
+                ).to(device)
+                out.append(mlp(xb).cpu().numpy())
+        return np.concatenate(out, axis=0) if out else np.zeros(0, dtype=np.float32)
+
+    # Sanity check on first 1000 train rows.
+    train_logits = _forward_logits(X_train[:1000])
+    train_probs  = 1.0 / (1.0 + np.exp(-train_logits))
+    print(f"\nSanity (first 1000 train rows): "
+          f"pred mean={train_probs.mean():.3f}  "
+          f"range=[{train_probs.min():.3f}, {train_probs.max():.3f}]")
+    del X_train, y_train
+    gc.collect()
+
+    # ── 12. Platt calibration ──────────────────────────────────────────────────
+    print("\nFitting Platt calibration on holdout logits...")
+    platt_logits = _forward_logits(X_platt)
+    lr = LogisticRegression(C=1e6, solver="lbfgs", max_iter=1000)
+    lr.fit(platt_logits.reshape(-1, 1), y_platt.astype(np.int64))
+    platt_a = float(lr.coef_[0, 0])
+    platt_b = float(lr.intercept_[0])
+    print(f"Platt: a={platt_a:.4f}  b={platt_b:.4f}")
+    del X_platt
+    gc.collect()
+
+    def _calibrated_prob(logits: np.ndarray) -> np.ndarray:
+        z = platt_a * logits + platt_b
+        return 1.0 / (1.0 + np.exp(-z))
+
+    def _nll(y_true: np.ndarray, p: np.ndarray, eps: float = 1e-7) -> float:
+        p = np.clip(p, eps, 1.0 - eps)
+        return float(np.mean(y_true * np.log(p) + (1 - y_true) * np.log(1 - p)))
+
+    # ── 13. Cold-start evaluation ──────────────────────────────────────────────
+    if len(y_cs) > 0:
+        cs_logits = _forward_logits(X_cs)
+        cs_probs_raw = 1.0 / (1.0 + np.exp(-cs_logits))
+        cs_probs_cal = _calibrated_prob(cs_logits)
+        cs_nll_raw = _nll(y_cs, cs_probs_raw)
+        cs_nll_cal = _nll(y_cs, cs_probs_cal)
+        platt_nll  = _nll(y_platt, _calibrated_prob(platt_logits))
+        print(f"\nPlatt holdout NLL (calibrated): {platt_nll:.4f}  (higher is better)")
+        print(f"COLD-START NLL  (raw):         {cs_nll_raw:.4f}")
+        print(f"COLD-START NLL  (calibrated):  {cs_nll_cal:.4f}")
+        print(f"Held-out benchmarks: {heldout_benchmarks}")
+    else:
+        print("\nNo cold-start rows — skipping cold-start NLL")
+        cs_nll_raw = cs_nll_cal = None
+    del X_cs, y_cs, y_platt
+    gc.collect()
+
+    # ── 14. Fit k-means centroids (for diversity in labeling.py) ───────────────
+    print("\nFitting k-means centroids on item embeddings...")
+    rng = np.random.default_rng(0)
     sample_idx = rng.choice(len(item_texts_dense),
                             size=min(50000, len(item_texts_dense)), replace=False)
-    X_cent = encoder.encode([item_texts_dense[j] for j in sample_idx],
-                            batch_size=256, show_progress_bar=True,
-                            convert_to_numpy=True)
+    X_cent = V_dense[sample_idx]
     km = MiniBatchKMeans(n_clusters=64, n_init=10, random_state=42, batch_size=4096)
     km.fit(X_cent)
     print(f"Centroids: {km.cluster_centers_.shape}")
 
-    # ── 11. Save artifacts ─────────────────────────────────────────────────────
+    # ── 15. Save artifacts ─────────────────────────────────────────────────────
+    # subject_embeddings.npy was already saved right after encoding (before the
+    # per-split memory cleanup). item_embeddings.npy is NOT needed at inference
+    # (model.py encodes items fresh) and we've already freed V_all to reduce
+    # memory pressure during training.
     A = ARTIFACTS_DIR
-    np.save(f"{A}/theta.npy",           theta)
-    np.save(f"{A}/item_a.npy",          a_full)
-    np.save(f"{A}/item_b.npy",          b_full)
-    np.save(f"{A}/centroids.npy",       km.cluster_centers_)
-    np.save(f"{A}/item_embeddings.npy", V_all)
-    np.save(f"{A}/X_mean.npy",          X_mean)
-    np.save(f"{A}/X_std.npy",           X_std)
+    np.save(f"{A}/theta.npy",              theta)
+    np.save(f"{A}/item_a.npy",             a_full)
+    np.save(f"{A}/item_b.npy",             b_full)
+    np.save(f"{A}/centroids.npy",          km.cluster_centers_.astype(np.float32))
+    np.save(f"{A}/X_mean.npy",             X_mean.astype(np.float32))
+    np.save(f"{A}/X_std.npy",              X_std.astype(np.float32))
 
-    json.dump(subject_id_lookup,   open(f"{A}/subject_id_lookup.json",   "w"))
-    json.dump(subject_name_lookup, open(f"{A}/subject_name_lookup.json", "w"))
-    json.dump(bm_columns,          open(f"{A}/bm_columns.json",          "w"))
-    json.dump(cond_columns,        open(f"{A}/cond_columns.json",        "w"))
-    json.dump({"input_dim": input_dim}, open(f"{A}/mlp_config.json",     "w"))
+    json.dump(subject_id_lookup,       open(f"{A}/subject_id_lookup.json",      "w"))
+    json.dump(subject_name_lookup,     open(f"{A}/subject_name_lookup.json",    "w"))
+    json.dump(subject_emb_index,       open(f"{A}/subject_emb_index.json",      "w"))
+    json.dump(bm_emb_lookup,           open(f"{A}/bm_emb_lookup.json",          "w"))
+    json.dump(cond_emb_lookup,         open(f"{A}/cond_emb_lookup.json",        "w"))
+    json.dump(subject_mean_acc_lookup, open(f"{A}/subject_mean_acc.json",       "w"))
+    json.dump(benchmark_mean_acc_lookup, open(f"{A}/benchmark_mean_acc.json",   "w"))
+    json.dump({"global_mean_acc": global_mean_acc},
+              open(f"{A}/global_mean_acc.json", "w"))
+    json.dump({"a": platt_a, "b": platt_b}, open(f"{A}/platt.json", "w"))
+    json.dump({"input_dim": input_dim}, open(f"{A}/mlp_config.json",            "w"))
 
     torch.save(mlp.state_dict(), f"{A}/mlp.pt")
 
     bundle = {
-        "bm_columns":       bm_columns,
-        "cond_columns":     cond_columns,
-        "encoder_name":     ENCODER_NAME,
-        "n_embedding_dims": V_dense.shape[1],
-        "input_dim":        input_dim,
+        "encoder_name":      ENCODER_NAME,
+        "encoder_dim":       ENCODER_DIM,
+        "input_dim":         input_dim,
+        "heldout_benchmarks": heldout_benchmarks,
+        "cold_start_nll_raw":        cs_nll_raw,
+        "cold_start_nll_calibrated": cs_nll_cal,
     }
     pickle.dump(bundle, open(f"{A}/bundle.pkl", "wb"))
 
     volume.commit()
-    print(f"\nAll artifacts saved  done")
+    print(f"\nAll artifacts saved")
+    print(f"input_dim = {input_dim}  (expected {expected_input_dim})")
     return "Training complete"
 
 
@@ -338,10 +547,13 @@ def main():
     vol = modal.Volume.from_name("eval-artifacts")
     for fname in [
         "theta.npy", "item_a.npy", "item_b.npy",
-        "centroids.npy", "item_embeddings.npy",
+        "centroids.npy", "item_embeddings.npy", "subject_embeddings.npy",
         "X_mean.npy", "X_std.npy", "mlp.pt",
         "subject_id_lookup.json", "subject_name_lookup.json",
-        "bm_columns.json", "cond_columns.json",
+        "subject_emb_index.json",
+        "bm_emb_lookup.json", "cond_emb_lookup.json",
+        "subject_mean_acc.json", "benchmark_mean_acc.json",
+        "global_mean_acc.json", "platt.json",
         "mlp_config.json", "bundle.pkl",
     ]:
         data = b"".join(vol.read_file(fname))

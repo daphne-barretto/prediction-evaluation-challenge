@@ -1,9 +1,7 @@
 # HuggingFace model repos to pre-fetch into the submission container.
 # One repo per line. The platform downloads these before the container starts.
 #
-# Examples:
-# sentence-transformers/all-mpnet-base-v2
-# Qwen/Qwen2.5-7B-Instruct
-#sentence-transformers/paraphrase-MiniLM-L3-v2
-#sentence-transformers/all-MiniLM-L6-v2
-sentence-transformers/all-mpnet-base-v2 
+# Keep in sync with the encoder used in train_modal.py, model.py, and
+# labeling.py. Current pipeline uses all-mpnet-base-v2 (768-d sentence
+# embeddings).
+sentence-transformers/all-mpnet-base-v2

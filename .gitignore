@@ -24,6 +24,12 @@ artifacts/*.npy
 # HuggingFace cache
 .hf_cache/
 
+# Local data cache (HF parquet snapshots)
+data/
+
+# Submission ledger + ZIPs (kept out of git; archive separately)
+runs/
+
 # IDE
 .vscode/
 .idea/
@@ -45,3 +51,12 @@ submission.zip
 data/
 *.parquet
 *.arrow
+
+# Locally-saved retrain outputs (regenerable on Modal)
+artifacts_baseline/
+
+# Local analysis dumps
+/tmp/cs_dump/
+
+# Gradescope bundle (regenerable from runs/ledger.db + runs/zips/)
+gradescope/

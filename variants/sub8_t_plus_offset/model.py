@@ -79,6 +79,11 @@ _PLATT = json.load(open("artifacts/platt.json"))
 _PLATT_A = float(_PLATT["a"])
 _PLATT_B = float(_PLATT["b"])
 
+try:
+    _TEMPERATURE = float(json.load(open("artifacts/temperature.json"))["T"])
+except (FileNotFoundError, KeyError, ValueError):
+    _TEMPERATURE = 1.0
+
 # Per-round caches
 _item_cache:    dict[str, np.ndarray] = {}
 _subject_cache: dict[str, np.ndarray] = {}
@@ -185,7 +190,7 @@ def _logit(x: np.ndarray) -> float:
 
 
 def _platt_prob(logit: float) -> float:
-    z = _PLATT_A * logit + _PLATT_B
+    z = (_PLATT_A * logit + _PLATT_B) / _TEMPERATURE
     return float(1.0 / (1.0 + np.exp(-z)))
 
 
@@ -220,6 +225,12 @@ def _get_subject_offsets(labeled: list[dict] | None) -> dict[str, float]:
 
 
 def predict(input: dict, labeled: list[dict] | None = None) -> float:
+    # sub 8 variant: T-scaling AND per-subject mean-residual offset.
+    # Hypothesis: in sub 2 the offset hurt because raw predictions were
+    # wildly overconfident (mean residuals were dominated by sigmoid
+    # saturation rather than per-subject bias). With T-scaling
+    # softening predictions to well-calibrated probabilities, the
+    # mean-residual offset may now correctly capture per-subject bias.
     theta = _lookup_theta(input["subject_content"])
     x = _build_x(theta, input["subject_content"], input["item_content"],
                  input["benchmark"], input["condition"])

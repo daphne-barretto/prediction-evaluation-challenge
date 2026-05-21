@@ -1,0 +1,1 @@
+{"T": 4.073172400973336, "nll_T1": -0.8320422768592834, "nll_Tstar": -0.6647863841732121, "fit_set": "cold_start_holdout", "heldout_benchmarks": ["bfcl", "matharena"]}

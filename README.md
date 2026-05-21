@@ -2,6 +2,22 @@
 
 Predictive AI Evaluation Challenge — predict whether an AI subject will answer a benchmark item correctly, **without running the model on the item**.
 
+> 📄 The official competition handbook lives at [`docs/Predictive_Evaluation_Challenge.pdf`](docs/Predictive_Evaluation_Challenge.pdf). When this README and the handbook disagree, the handbook (plus any course-staff clarifications) wins.
+
+## Headline result
+
+| Submission | NLL ↑ | AUC | What it does |
+|---|---:|---:|---|
+| Original course baseline | -0.70 | — | reference |
+| Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression — diagnostic baseline |
+| Sub 2: mpnet, no Platt (offset on) | -0.93 | 0.63 | -Platt |
+| Sub 3: mpnet, no Platt, no offset | -0.85 | 0.63 | -offset |
+| **Sub 5: sub 3 + post-hoc T-scaling (T=4.073)** | **-0.65** | **0.63** | **+0.05 vs baseline, 0.07 from top** |
+
+T-scaling is fit on a held-out cold-start val split via `dump_cs_logits.py` (Modal job that
+reconstructs the inference-time feature matrix and minimises val NLL over a single scalar).
+See [`variants/sub5_t_scaled/model.py`](variants/sub5_t_scaled/model.py) for the integration.
+
 ## Problem
 
 Given four text fields describing a (subject, item, benchmark, condition) tuple, predict the probability that the subject answers the item correctly. This is a **cold-start** prediction problem: test items have no observed responses in the training matrix.
@@ -12,17 +28,20 @@ Given four text fields describing a (subject, item, benchmark, condition) tuple,
 ├── model.py              # Required: predict() entry point for Codabench
 ├── labeling.py           # Optional: acquisition_function() for adaptive labeling
 ├── train.py              # Offline training script (produces model artifacts)
+├── train_modal.py        # Modal-cloud variant of train.py (GPU-accelerated)
+├── dump_cs_logits.py     # Modal job: recompute cold-start logits + fit T*
+├── submit.py             # Build / list / update submissions (enforces 64-char ZIP name)
+├── ledger.py             # SQLite-backed submission ledger
 ├── validate.py           # Local validation / smoke-test script
 ├── requirements.txt      # Python dependencies
 ├── models.txt            # HuggingFace model repos needed at runtime
-├── artifacts/            # Trained model weights (gitignored if large)
+├── artifacts/            # Trained model weights (large files gitignored)
+├── baseline_pkg/         # Frozen copy of the original course baseline (for reproduction)
+├── variants/             # Submission-specific model.py overlays
+│   ├── sub5_t_scaled/    # T-scaling integration (winning submission)
+│   └── sub8_t_plus_offset/  # T-scaling + per-subject offset re-enabled
+├── manifests/            # JSON manifests describing each submission
 └── starting_kit/         # Official starter kit from Codabench (reference)
-    ├── README.md
-    ├── sample_code_submission/
-    ├── templates/
-    │   ├── hf_submission/    # Template for HuggingFace model submissions
-    │   └── labeling_addon/   # Template for adaptive labeling
-    └── example_code/
 ```
 
 ## Quick Start
