@@ -1,15 +1,16 @@
 {
-  "model_name": "mpnet_no_offset",
-  "notes": "Same artifacts as submission 1/2 EXCEPT: (a) platt.json is identity (a=1, b=0, same as sub 2), and (b) model.py has the mean-residual subject offset DISABLED in predict() — the labeled argument is ignored. Diagnostic: tests whether the K=5 mean-residual offset (added in our rewrite to replace the 40976e8 submission's Newton-Raphson theta update) is helping or hurting versus pure cold MLP predictions. Reference: sub 2 was raw sigmoid + offset and scored NLL=-0.93, AUC=0.63. If sub 3 scores meaningfully better than -0.93, the offset is hurting; if it scores meaningfully worse, the offset is helping; if it's a wash, the offset is neutral.",
+  "model_name": "sub28_knn_combo",
+  "notes": "Combines sub 28 (alpha=0.20 blend, -0.60/0.69) with Prong A item-text kNN. Formula: 0.20*p_sub5 + 0.80*[0.4*p_knn + 0.6*subj_mean_smoothed]. Layers item-text signal into the subj_mean channel of sub 28. Falls back to sub 28 when no kNN candidates (cold-start subject).",
   "hyperparams": {
     "encoder": "sentence-transformers/all-mpnet-base-v2",
     "encoder_dim": 768,
     "input_dim": 3075,
-    "platt_a": 1.0,
-    "platt_b": 0.0,
-    "platt_disabled": true,
-    "mean_residual_offset_disabled": true,
-    "parent_submission_id": 2
+    "ALPHA": 0.20,
+    "BETA": 0.4,
+    "KNN_K": 20,
+    "KNN_TEMP": 0.05,
+    "subj_shrink": 0.1,
+    "parent_submissions": [28, 33]
   },
   "val_nll_mean": null,
   "val_nll_std": null,
@@ -36,7 +37,12 @@
     "artifacts/benchmark_mean_acc.json",
     "artifacts/global_mean_acc.json",
     "artifacts/platt.json",
+    "artifacts/temperature.json",
     "artifacts/X_mean.npy",
-    "artifacts/X_std.npy"
+    "artifacts/X_std.npy",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
   ]
 }

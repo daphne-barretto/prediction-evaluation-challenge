@@ -1,0 +1,22 @@
+{
+  "model_name": "subj_mean_lam020",
+  "notes": "Sub 21 smoothing sweep: ALPHA=0.20 (sub 21 used 0.10). Pairs with subj_mean_lam005 to bracket sub 21's smoothing parameter from both sides.",
+  "hyperparams": {
+    "subject_mean_source": "artifacts/subject_mean_acc.json",
+    "global_mean_source": "artifacts/global_mean_acc.json",
+    "n_subjects_known": 745,
+    "shrinkage_alpha": 0.20,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 21
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json"
+  ]
+}

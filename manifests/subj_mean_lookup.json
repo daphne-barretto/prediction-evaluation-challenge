@@ -1,0 +1,22 @@
+{
+  "model_name": "subj_mean_lookup",
+  "notes": "Slide-29 rung 3: SMOOTHED subject mean only. p_smoothed = 0.9 * subject_mean_acc[name] + 0.1 * global_mean, fallback to global mean for unseen subjects, clipped to [0.001, 0.999] per slide 28. NO item text, NO benchmark adjustment, NO MLP. Slide 30 explicitly names this rung 'SMOOTHED subject mean' (not raw); 2 of 745 known subjects have subject_mean = 0.0 (DeepSeek-V3.2-Exp-Thinking, gemini-2.5-flash) and would NLL-explode under raw lookup if they appear in the leaderboard sample with y=1. Contrast vs const_glob_mean (rung 2) isolates how much per-subject signal is worth at cold-start.",
+  "hyperparams": {
+    "subject_mean_source": "artifacts/subject_mean_acc.json",
+    "global_mean_source": "artifacts/global_mean_acc.json",
+    "n_subjects_known": 745,
+    "shrinkage_alpha": 0.1,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": null
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json"
+  ]
+}

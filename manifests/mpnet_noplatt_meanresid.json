@@ -1,6 +1,6 @@
 {
   "model_name": "mpnet_noplatt_meanresid",
-  "notes": "Same artifacts as submission 1 (mpnet_platt_meanresid) EXCEPT platt.json is overridden to identity (a=1, b=0), which makes _platt_prob() reduce to raw sigmoid(logit). Diagnostic: tests whether Platt sharpening (alpha~1.15) was the dominant cause of the -1.01 leaderboard NLL vs baseline -0.70. If this submission scores meaningfully better than -1.01, the encoder/feature changes are salvageable. If it does not, the regression is elsewhere (capacity overfit, mean-residual offset, etc.) and we should reproduce the baseline and add features incrementally.",
+  "notes": "Same artifacts as submission 1 (mpnet_platt_meanresid) EXCEPT platt.json is overridden to identity (a=1, b=0), which makes _platt_prob() reduce to raw sigmoid(logit). Diagnostic: tests whether Platt sharpening (alpha~1.15) was the dominant cause of the -1.01 leaderboard NLL vs the team's earlier 40976e8 submission at -0.70. If this submission scores meaningfully better than -1.01, the encoder/feature changes are salvageable. If it does not, the regression is elsewhere (capacity overfit, mean-residual offset, etc.) and we should reproduce the 40976e8 submission and add features incrementally.",
   "hyperparams": {
     "encoder": "sentence-transformers/all-mpnet-base-v2",
     "encoder_dim": 768,

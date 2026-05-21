@@ -1,6 +1,6 @@
 {
-  "model_name": "mpnet_no_offset",
-  "notes": "Same artifacts as submission 1/2 EXCEPT: (a) platt.json is identity (a=1, b=0, same as sub 2), and (b) model.py has the mean-residual subject offset DISABLED in predict() — the labeled argument is ignored. Diagnostic: tests whether the K=5 mean-residual offset (added in our rewrite to replace the 40976e8 submission's Newton-Raphson theta update) is helping or hurting versus pure cold MLP predictions. Reference: sub 2 was raw sigmoid + offset and scored NLL=-0.93, AUC=0.63. If sub 3 scores meaningfully better than -0.93, the offset is hurting; if it scores meaningfully worse, the offset is helping; if it's a wash, the offset is neutral.",
+  "model_name": "sub5_blend_022",
+  "notes": "Fine alpha sweep around sub 28 (-0.60/0.69). alpha=0.22: 0.22*p_sub5 + 0.78*subject_mean_acc.",
   "hyperparams": {
     "encoder": "sentence-transformers/all-mpnet-base-v2",
     "encoder_dim": 768,
@@ -8,8 +8,11 @@
     "platt_a": 1.0,
     "platt_b": 0.0,
     "platt_disabled": true,
-    "mean_residual_offset_disabled": true,
-    "parent_submission_id": 2
+    "temperature_scaling_enabled": true,
+    "T": 4.073172400973336,
+    "blend_weight_sub5": 0.22,
+    "blend_weight_subject_mean": 0.80,
+    "parent_submission_id": 17
   },
   "val_nll_mean": null,
   "val_nll_std": null,
@@ -36,6 +39,7 @@
     "artifacts/benchmark_mean_acc.json",
     "artifacts/global_mean_acc.json",
     "artifacts/platt.json",
+    "artifacts/temperature.json",
     "artifacts/X_mean.npy",
     "artifacts/X_std.npy"
   ]

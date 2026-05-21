@@ -1,0 +1,23 @@
+{
+  "model_name": "subj_bayes_K",
+  "notes": "Sub 21 + Beta-Bernoulli posterior on the K=5 labeled examples (per subject). Uses K as a likelihood update, not an additive residual shift (which sub 8/14/20 showed is too noisy). Prior strength N_PRIOR=25 gives K=5 a weight of ~17% when present. When no labels match a test subject, this collapses exactly to sub 21's prediction (so worst-case ties sub 21 at -0.61). Same artifacts as sub 21.",
+  "hyperparams": {
+    "subject_mean_source": "artifacts/subject_mean_acc.json",
+    "global_mean_source": "artifacts/global_mean_acc.json",
+    "n_subjects_known": 745,
+    "shrinkage_alpha": 0.10,
+    "n_prior": 25.0,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 21
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json"
+  ]
+}

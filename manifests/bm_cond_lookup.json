@@ -1,0 +1,21 @@
+{
+  "model_name": "bm_cond_lookup",
+  "notes": "Slide-29 rung 4 ablation: predict() returns benchmark_mean_acc[benchmark] with fallback to the global mean. NO subject signal, NO item text, NO MLP. The slide names 'benchmark + condition' together; train_modal.py only computes per-benchmark means so the condition side is folded in via the fallback. We expect this to collapse to the global mean on cold-start (held-out benchmarks fall through), making the contrast with subj_mean_lookup informative: it shows that for this competition's cold-start regime the SUBJECT side carries signal and the BENCHMARK side does not.",
+  "hyperparams": {
+    "benchmark_mean_source": "artifacts/benchmark_mean_acc.json",
+    "global_mean_source": "artifacts/global_mean_acc.json",
+    "n_benchmarks_known": 14,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": null
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/benchmark_mean_acc.json",
+    "artifacts/global_mean_acc.json"
+  ]
+}

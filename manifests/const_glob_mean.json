@@ -1,0 +1,15 @@
+{
+  "model_name": "const_glob_mean",
+  "notes": "Slide-29 rung 2 ablation: predict() returns the train-time global mean pass rate (0.6450659659207623, computed over non-cold-start training rows; cf. artifacts/global_mean_acc.json). Bayes-optimal constant if the leaderboard sample mean matches train. Comparing this to const_0p5 (-0.6931) tells us whether the leaderboard distribution is shifted away from the train mean (in which case const_0p5 would actually win) or matches it (in which case 0.645 is the new floor). Ships only model.py; value is hardcoded for a single-file ZIP.",
+  "hyperparams": {
+    "constant": 0.6450659659207623,
+    "constant_source": "artifacts/global_mean_acc.json",
+    "parent_submission_id": null
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py"
+  ]
+}
