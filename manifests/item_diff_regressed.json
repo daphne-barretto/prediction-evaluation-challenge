@@ -1,0 +1,25 @@
+{
+  "model_name": "item_diff_regressed",
+  "notes": "Prong B-cold-start: blend smoothed subject_mean with item-difficulty predicted from item text via Ridge regression (item_emb -> logit mu_item). GAMMA=0.5. For known item_ids uses empirical item_mean; for cold-start items uses Ridge prediction from MPNet embedding.",
+  "hyperparams": {
+    "gamma": 0.5,
+    "alpha_subj_shrink": 0.1,
+    "item_smoothing_n_prior": 5.0,
+    "regressor": "ridge_alpha10",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 21
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_diff_regressor.json"
+  ]
+}

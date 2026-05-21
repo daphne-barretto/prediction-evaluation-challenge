@@ -1,0 +1,21 @@
+{
+  "model_name": "subj_bench_lookup",
+  "notes": "Prong C: Subject x Benchmark cross-table lookup. (s,b) cell smoothed toward subject mean (n_prior=3.0) -> subject mean smoothed by 0.1 toward global -> global. If any leaderboard benchmark overlaps training, the (s,b) cell adds per-domain signal beyond subject mean. If fully cold-start (no overlap), collapses to subject mean (= sub 21).",
+  "hyperparams": {
+    "subject_smoothing": 3.0,
+    "subject_global_shrinkage": 0.1,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 21
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/subject_benchmark_mean_acc.json"
+  ]
+}
