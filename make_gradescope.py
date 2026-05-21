@@ -67,6 +67,8 @@ def write_readme(sub: dict, dest: Path, report_included: bool) -> None:
     readme = dest / "README.md"
     nll = sub["leaderboard_nll"]
     auc = sub["leaderboard_auc"]
+    nll_str = f"{nll:.2f}" if isinstance(nll, (int, float)) else str(nll)
+    auc_str = f"{auc:.2f}" if isinstance(auc, (int, float)) else str(auc)
     round_id = sub["leaderboard_round_id"] or "(unrecorded)"
     body = f"""# Predictive Evaluation Challenge --- Gradescope bundle
 
@@ -75,8 +77,8 @@ round `{round_id}`).
 
 | Metric          | Value     |
 | --------------- | --------- |
-| Leaderboard NLL | **{nll}** |
-| Leaderboard AUC | {auc}     |
+| Leaderboard NLL | **{nll_str}** |
+| Leaderboard AUC | {auc_str}     |
 
 The artifacts in `artifacts/` are byte-identical to those shipped to
 Codabench in the matching ZIP (manifest hashes recorded in
