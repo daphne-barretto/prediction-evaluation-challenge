@@ -1,7 +1,8 @@
 """
 model.py — baseline_pkg/model.py
 
-Baseline reproduction of commit 40976e8's IRT + MLP pipeline.
+Frozen reproduction of the team's earlier submission at commit 40976e8
+(IRT + MLP pipeline).
 
 Feature layout (matches commit 40976e8's train_modal.py exactly, NOT its
 model.py which is inconsistent):

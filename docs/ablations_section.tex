@@ -1,0 +1,208 @@
+% ====================================================================
+%  Ablations section for the Predictive Evaluation Challenge report.
+%  Drop this file into Overleaf and `\input{ablations_section.tex}` from
+%  the main .tex, OR copy the body wholesale into the relevant section.
+%
+%  Required preamble packages (add to main.tex if not already there):
+%      \usepackage{booktabs}
+%      \usepackage{makecell}
+%      \usepackage{array}
+%      \usepackage{multirow}
+%      \usepackage{xcolor}
+%      \usepackage{amsmath}
+%
+%  Score macros — once the leaderboard returns each round, replace the
+%  TBD with the number. Negative log-loss is signed so a sign is
+%  required (e.g. -0.65, NOT 0.65).
+% ====================================================================
+\newcommand{\TBD}{\textit{pending}}
+% -- known scores from prior rounds (sub 1..8) -----------------------
+\newcommand{\lbNLLsubOne}{-1.01}\newcommand{\lbAUCsubOne}{0.62}
+\newcommand{\lbNLLsubTwo}{-0.93}\newcommand{\lbAUCsubTwo}{0.63}
+\newcommand{\lbNLLsubThree}{-0.85}\newcommand{\lbAUCsubThree}{0.63}
+\newcommand{\lbNLLsubFive}{-0.65}\newcommand{\lbAUCsubFive}{0.63}
+\newcommand{\lbNLLsubSix}{-0.65}\newcommand{\lbAUCsubSix}{\TBD}
+\newcommand{\lbNLLsubSeven}{-0.65}\newcommand{\lbAUCsubSeven}{\TBD}
+\newcommand{\lbNLLsubEight}{-0.75}\newcommand{\lbAUCsubEight}{\TBD}
+% -- Part-V ablations: fill in as rounds resolve ---------------------
+\newcommand{\lbNLLconstHalf}{\TBD}\newcommand{\lbAUCconstHalf}{\TBD}
+\newcommand{\lbNLLconstGM}{\TBD}\newcommand{\lbAUCconstGM}{\TBD}
+\newcommand{\lbNLLsubjMean}{\TBD}\newcommand{\lbAUCsubjMean}{\TBD}
+\newcommand{\lbNLLbmCond}{\TBD}\newcommand{\lbAUCbmCond}{\TBD}
+\newcommand{\lbNLLblendSubj}{\TBD}\newcommand{\lbAUCblendSubj}{\TBD}
+\newcommand{\lbNLLlabeledShift}{\TBD}\newcommand{\lbAUClabeledShift}{\TBD}
+% ====================================================================
+
+\section{Ablations and Strategy Coverage}
+\label{sec:ablations}
+
+We organise our exploration around Discussion~6's two scaffolds:
+(i)~the seven-rung calibration climb (from a constant 0.5 up to a
+content-aware PGE with adaptive labels), and
+(ii)~the six-family option space
+(F1 calibrated priors, F2 IRT alone, F3 content-based, F4 metadata
+stabilisers, F5 local LLM judges, F6 adaptive labels).
+Table~\ref{tab:coverage} maps each submission we ran onto these axes,
+and Table~\ref{tab:ablations} reports the leaderboard outcomes.
+
+\subsection{Coverage map}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Coverage of Discussion 6 strategy axes. Rows are the
+seven-rung calibration climb; columns are the six families.
+\ding{51} marks an ablation we shipped to the leaderboard; \ding{55} marks
+families we deliberately did not pursue (with justification in
+\S\ref{sec:ablations-skipped}).}
+\label{tab:coverage}
+\begin{tabular}{lcccccc}
+\toprule
+                                  & \textbf{F1} & \textbf{F2} & \textbf{F3} & \textbf{F4} & \textbf{F5} & \textbf{F6} \\
+                                  & priors      & IRT         & content     & metadata    & local LLM   & adaptive \\
+\midrule
+R1: $\hat p = 0.5$                & \checkmark  &             &             &             &             &             \\
+R2: global mean                   & \checkmark  &             &             &             &             &             \\
+R3: smoothed subject mean         & \checkmark  &             &             & \checkmark  &             &             \\
+R4: per-(benchmark, condition) mean & \checkmark &             &             & \checkmark  &             &             \\
+R5: + content (text $\to$ params) &             &             & \checkmark  &             & \ding{55}   &             \\
+R6: + IRT $\theta$ (full PGE)     &             & \ding{55}   & \checkmark  &             &             &             \\
+R7: + adaptive K{=}5 labels       &             &             & \checkmark  &             &             & \checkmark  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The lower four rungs are pure ablations of slide~30's recipe; the
+upper three are variants of our winning submission (Sub~5, T-scaled
+mpnet) along the metadata and adaptive-label axes.
+
+\subsection{Results}
+
+\begin{table*}[ht]
+\centering
+\small
+\caption{All submissions, ordered by leaderboard NLL (negative
+log-loss; higher is better). LB columns are filled in as each round
+resolves. Rungs and families reference Discussion~6 Part~V
+slides~29 and~31.}
+\label{tab:ablations}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{rl c c l rr}
+\toprule
+\textbf{ID} & \textbf{Submission} & \textbf{Rung} & \textbf{Family} & \textbf{Mechanism} & \textbf{LB NLL} & \textbf{LB AUC} \\
+\midrule
+\multicolumn{7}{l}{\textit{Climb baselines (priors / metadata)}}\\
+9  & \texttt{const\_0p5}       & R1 & F1     & constant $0.5$                                       & \lbNLLconstHalf      & \lbAUCconstHalf \\
+10 & \texttt{const\_glob\_mean} & R2 & F1     & constant $\bar y_{\text{train}}{=}0.645$             & \lbNLLconstGM        & \lbAUCconstGM   \\
+15 & \texttt{subj\_mean\_lookup}& R3 & F1+F4  & $0.9\,\bar y_s + 0.1\,\bar y_{\text{train}}$         & \lbNLLsubjMean       & \lbAUCsubjMean  \\
+16 & \texttt{bm\_cond\_lookup} & R4 & F1+F4  & $\bar y_{(b,c)}$, fallback $\bar y_{\text{train}}$   & \lbNLLbmCond         & \lbAUCbmCond    \\
+\midrule
+\multicolumn{7}{l}{\textit{Prior context: encoder upgrade alone vs. with T-scaling}}\\
+1 & \texttt{mpnet\_platt\_meanresid}     & R6 & F3 & mpnet+Platt+per-subject offset  & \lbNLLsubOne   & \lbAUCsubOne   \\
+2 & \texttt{mpnet\_noplatt\_meanresid}   & R6 & F3 & sub 1 -- Platt                  & \lbNLLsubTwo   & \lbAUCsubTwo   \\
+3 & \texttt{mpnet\_no\_offset}           & R6 & F3 & sub 2 -- offset                 & \lbNLLsubThree & \lbAUCsubThree \\
+\textbf{5} & \textbf{\texttt{tscale\_mpnet} (winner)} & R6 & F3 & \textbf{sub 3 + post-hoc T-scaling ($T{=}4.07$)} & \textbf{\lbNLLsubFive} & \textbf{\lbAUCsubFive} \\
+6  & \texttt{tscale\_T3p0}              & R6 & F3 & sub 5 with $T{=}3.0$              & \lbNLLsubSix    & \lbAUCsubSix     \\
+7  & \texttt{tscale\_T5p5}              & R6 & F3 & sub 5 with $T{=}5.5$              & \lbNLLsubSeven  & \lbAUCsubSeven   \\
+8  & \texttt{tscale\_plus\_offset}      & R6 & F3+F4 & sub 5 + per-subject mean-resid    & \lbNLLsubEight  & \lbAUCsubEight   \\
+\midrule
+\multicolumn{7}{l}{\textit{Part-V ablations on top of Sub 5}}\\
+13 & \texttt{sub5\_blend\_subj}     & R6+R3 & F3+F4 & $0.5\,p_{\text{sub5}} + 0.5\,\bar y_s$       & \lbNLLblendSubj    & \lbAUCblendSubj    \\
+14 & \texttt{sub5\_labeled\_shift}  & R7    & F3+F6 & sub 5 + shrunk global offset from $K{=}5$ labels, $\lambda{=}25$, $|\Delta|{\le}0.05$ & \lbNLLlabeledShift & \lbAUClabeledShift \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{What each ablation tests}
+
+\paragraph{R1: \texttt{const\_0p5} (Sub~9).}
+The information-theoretic floor: $-\ln 2 \approx -0.6931$. Anything
+that does not beat this is worse than no model. We include it
+because the gap between $-0.6931$ and our best (Sub~5 at
+\lbNLLsubFive) quantifies how much of the leaderboard score comes
+from prior calibration alone.
+
+\paragraph{R2: \texttt{const\_glob\_mean} (Sub~10).}
+The Bayes-optimal constant under squared error: $\bar y =
+\sum_i y_i / N = 0.645$ from the training response matrix. If the
+leaderboard's marginal pass rate matches training, this submission
+recovers the entire R1\,$\to$\,R2 step from slide~29 ``for free.''
+
+\paragraph{R3: \texttt{subj\_mean\_lookup} (Sub~15).}
+The smoothed-subject-mean rung. We apply a 10\,\% Bayesian shrinkage
+toward the global mean, $\hat p = 0.9\,\bar y_s + 0.1\,\bar
+y_{\text{train}}$, because two of 745 training subjects
+(\textit{DeepSeek-V3.2-Exp-Thinking} and
+\textit{gemini-2.5-flash}) have $\bar y_s = 0$ exactly and a raw
+lookup would risk an unbounded NLL contribution if those subjects
+appear with $y{=}1$. Predictions are clipped to $[10^{-3}, 1{-}10^{-3}]$
+per slide~28.
+
+\paragraph{R4: \texttt{bm\_cond\_lookup} (Sub~16).}
+Per-benchmark mean accuracy (we collapse the condition axis because
+$>$80\,\% of items use \texttt{none}). This is expected to be the
+weakest of the four prior submissions: leaderboard rounds may sample
+held-out benchmarks not seen in training, in which case the
+predictor degenerates to the global mean. The result therefore
+isolates the contribution of \emph{generalising} metadata signals
+versus memorising them.
+
+\paragraph{R6 winner: \texttt{tscale\_mpnet} (Sub~5).}
+Our best-performing submission. The all-mpnet-base-v2 encoder
+produces 768-d embeddings for subject, item, benchmark, and
+condition text; an MLP maps the concatenated representation to
+per-item IRT parameters $(a, b)$; the full PGE
+$\sigma(a\,(\theta - b))$ is computed in inference. Post-hoc
+temperature scaling at $T{=}4.07$ (fit on a cold-start val split via
+\texttt{dump\_cs\_logits.py}) flattens the over-confident logits
+produced by the cold-start mismatch.
+
+\paragraph{Sub~5 metadata blend: \texttt{sub5\_blend\_subj} (Sub~13).}
+Slide~31 lists ``F4 metadata stabilisers'' as a hedge against the
+content head being uncalibrated. We blend
+$\hat p = 0.5\,p_{\text{sub5}} + 0.5\,\bar y_s$. The blend is
+robust: T-scaled mpnet outputs are concentrated near $0.5$, so even
+when $\bar y_s = 0$ the blend lands near $0.25$ rather than
+saturating. This is the variant most likely to beat the Sub~5 NLL.
+
+\paragraph{Sub~5 with K{=}5 adaptive labels: \texttt{sub5\_labeled\_shift} (Sub~14).}
+Sub~8 attempted a per-subject mean-residual offset from the $K{=}5$
+labels per category and regressed by $-0.10$ NLL—five labels split
+across $\approx$5 subjects yields one label per subject, which is
+much too noisy. We retreat to the most conservative possible
+adaptive-label lever: a \emph{single} global offset
+$\Delta = \frac{1}{N+\lambda}\sum_i (y_i - \hat p_i)$ with shrinkage
+$\lambda{=}25$ (so 25 labels see a $25/(25{+}25) = 50\,\%$ pull) and a
+magnitude cap $|\Delta| \le 0.05$. We intentionally omit
+\texttt{labeling.py} so that the platform supplies uniformly random
+labels, which give an unbiased mean-residual estimator.
+
+\subsection{Strategies we did not pursue}
+\label{sec:ablations-skipped}
+
+\paragraph{F2 IRT alone (\ding{55}).}
+Slide~31 warns this ``fails cold-start'': an IRT model without text
+features cannot place a previously-unseen subject in the $\theta$
+space. Our winning model already uses IRT \emph{with} text features
+(rung~6); a clean ``IRT-only'' ablation would require retraining
+from scratch on the train matrix without text, which we judged
+unlikely to be informative.
+
+\paragraph{F5 local LLM judge (\ding{55}).}
+A small generative LLM scoring items on the sandbox GPU would
+require a new HuggingFace repo declared in \texttt{models.txt}, a
+calibration head trained on its log-probabilities, and a re-run of
+the cold-start T-scaling sweep. The sandbox imposes a 30--60~min
+per-tier timeout (Table~\ref{tab:gputiers}) and the implementation
+budget did not permit a credible evaluation in the time remaining.
+
+\subsection{Headline takeaway}
+
+The pure-prior submissions (R1--R4) bound the contribution of
+\emph{calibration alone}: the R1 floor is $-0.6931$ and Sub~5 sits at
+\lbNLLsubFive. The remaining gap to the leaderboard ceiling
+must therefore come from the content head and/or label-conditional
+shifts. \texttt{sub5\_blend\_subj} (Sub~13) and
+\texttt{sub5\_labeled\_shift} (Sub~14) target exactly those two
+levers in the most conservative form we could justify against Sub~8's
+$-0.10$ NLL regression.

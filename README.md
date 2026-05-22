@@ -8,15 +8,22 @@ Predictive AI Evaluation Challenge — predict whether an AI subject will answer
 
 | Submission | NLL ↑ | AUC | What it does |
 |---|---:|---:|---|
-| Original course baseline | -0.70 | — | reference |
-| Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression — diagnostic baseline |
+| Team submission, commit `40976e8` (MiniLM-L3 + IRT) | -0.70 | — | earlier team run |
+| Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression diagnostic |
 | Sub 2: mpnet, no Platt (offset on) | -0.93 | 0.63 | -Platt |
 | Sub 3: mpnet, no Platt, no offset | -0.85 | 0.63 | -offset |
-| **Sub 5: sub 3 + post-hoc T-scaling (T=4.073)** | **-0.65** | **0.63** | **+0.05 vs baseline, 0.07 from top** |
+| Sub 5: sub 3 + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | calibration recovery |
+| Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | first crack of the -0.65 plateau |
+| Sub 17: 0.3·sub 5 + 0.7·subject mean | -0.61 | 0.69 | AUC champion |
+| Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | lookup ties full pipeline |
+| **Sub 28: 0.2·sub 5 + 0.8·subject mean** | **-0.60** | **0.69** | **new winner — first crack of the -0.61 plateau** |
 
 T-scaling is fit on a held-out cold-start val split via `dump_cs_logits.py` (Modal job that
 reconstructs the inference-time feature matrix and minimises val NLL over a single scalar).
 See [`variants/sub5_t_scaled/model.py`](variants/sub5_t_scaled/model.py) for the integration.
+Sub 28's α=0.20 blend sits in a sharp local NLL minimum: subs 27 (α=0.15) and 17 (α=0.30)
+both tie at -0.61 on either side. The content head buys ranking (AUC 0.69) and a
+final 0.01 NLL at α=0.20 on top of the per-subject identity floor of -0.61.
 
 ## Problem
 
@@ -36,7 +43,7 @@ Given four text fields describing a (subject, item, benchmark, condition) tuple,
 ├── requirements.txt      # Python dependencies
 ├── models.txt            # HuggingFace model repos needed at runtime
 ├── artifacts/            # Trained model weights (large files gitignored)
-├── baseline_pkg/         # Frozen copy of the original course baseline (for reproduction)
+├── baseline_pkg/         # Frozen reproduction of the 40976e8 submission (MiniLM-L3 + IRT)
 ├── variants/             # Submission-specific model.py overlays
 │   ├── sub5_t_scaled/    # T-scaling integration (winning submission)
 │   └── sub8_t_plus_offset/  # T-scaling + per-subject offset re-enabled
