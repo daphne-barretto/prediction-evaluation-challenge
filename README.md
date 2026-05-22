@@ -72,6 +72,90 @@ python validate.py
 zip -r submission.zip model.py labeling.py requirements.txt models.txt artifacts/
 ```
 
+## Reproducing any submission
+
+Every leaderboard submission is built from a **manifest** (in `manifests/`)
+plus a per-submission `model.py` overlay (in `variants/<name>/`). The same
+manifest produces a byte-identical ZIP on any machine: ZIP entries are
+sorted and stamped with a fixed mtime, so `sha256(zip)` is stable. The
+manifest sha + git commit are recorded in `runs/ledger.db` at build time.
+
+### Browse what we submitted
+
+```bash
+# List every submission row (with leaderboard NLL/AUC once back-filled)
+python submit.py list
+
+# Show the manifest, files, hyperparameters and leaderboard score for one
+python submit.py show 33    # sub 33 = item_knn_subject (current winner)
+
+# Or query the SQLite ledger directly
+sqlite3 runs/ledger.db \
+  "SELECT id, model_name, leaderboard_nll, leaderboard_auc
+     FROM submissions ORDER BY leaderboard_nll ASC LIMIT 10;"
+```
+
+### Recreate a specific ZIP
+
+```bash
+# Build, e.g., sub 33 (item-text k-NN within subject):
+./build_variant.sh item_knn_subject
+
+# What this does:
+#   1. Reads manifests/item_knn_subject.json
+#   2. Temporarily swaps variants/item_knn_subject/model.py into the
+#      repo root (so submit.py sees it as model.py).
+#   3. Runs `python submit.py build manifests/item_knn_subject.json`,
+#      which materializes runs/zips/<ts>__item_knn_subject__<sha>.zip
+#      and inserts a new row in runs/ledger.db.
+#   4. Restores the original root-level model.py.
+```
+
+After the round resolves on Codabench, back-fill the leaderboard score:
+
+```bash
+python submit.py update 33 \
+  --leaderboard-nll -0.5940 \
+  --leaderboard-auc 0.7083 \
+  --round-id 746473
+```
+
+### Add a new variant
+
+1. Drop a `model.py` (and optionally `labeling.py`) into
+   `variants/<your_name>/`. It can either import shared artifacts from
+   `artifacts/` directly or contain the prediction logic inline.
+2. Add `manifests/<your_name>.json` declaring the model name,
+   hyperparameters, notes, and the list of files the ZIP must contain
+   (relative to repo root). Start from
+   [`manifests/item_knn_subject.json`](manifests/item_knn_subject.json)
+   or [`manifests/tscale_mpnet.json`](manifests/tscale_mpnet.json) as
+   templates.
+3. Run `./build_variant.sh <your_name>` and confirm the new row in
+   `python submit.py list`. The ZIP file path appears under
+   `runs/zips/` and the manifest sha is recorded in the ledger.
+
+> **Codabench filename limit (≤ 64 chars):** `submit.py` enforces this
+> before building. ZIP names use the format
+> `<UTC-ts:20>__<model_name>__<short_sha[+dirty]>.zip`, so keep model
+> names ≤ ~22 chars (≤ ~17 when the working tree is dirty).
+
+### Where artifacts come from
+
+Most submissions reuse the same `artifacts/` directory (subject means,
+item embeddings, PCA components, per-subject response tables, etc.).
+These are produced by:
+
+| Script | Produces |
+|---|---|
+| `python train.py` | subject/global means, item-mean tables (the F1+F4 lookups powering subs 21–27) |
+| `python train_modal.py` | full MLP + Platt + T pipeline on Modal GPU (sub 1 and its diagnostic descendants 2–5) |
+| `python dump_cs_logits.py` | cold-start logits + fitted T\* used by sub 5 |
+| `MODAL_PROFILE=cs336-2026 modal run --detach precompute_modal.py` | MPNet item embeddings (full + PCA-256), per-subject response tables, item-mean / subject×benchmark-mean lookups, ridge `item_diff_regressor.json` (subs 31–38 and the entire sub 33 family) |
+
+Each variant's `manifest.files[]` lists exactly which artifacts go into
+its ZIP, so a single train cycle supports many submissions.
+
 ## Loading Training Data
 
 The HuggingFace repo is a collection of Parquet tables, **not** a single `datasets` split. Do **not** use `load_dataset("aims-foundations/measurement-db")` directly — it may mix response tables with trace tables that have different schemas.
