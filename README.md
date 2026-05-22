@@ -49,27 +49,27 @@ file matches the file list in `manifests/item_knn_subject.json` exactly.
 
 | Submission | NLL ↑ | AUC | What it does |
 |---|---:|---:|---|
-| Earlier submission, commit `40976e8` (mpnet + IRT + Newton-K=5) | -0.70 | 0.60 | earlier `40976e8` run |
-| Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression diagnostic |
-| Sub 5: sub 3 + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | calibration recovery |
-| Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | first crack of the -0.65 plateau |
-| Sub 17: 0.3·sub 5 + 0.7·subject mean | -0.61 | 0.69 | (then-)AUC champion |
-| Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | lookup ties full pipeline |
-| Sub 28: 0.2·sub 5 + 0.8·subject mean | -0.60 | 0.69 | first crack of the -0.61 plateau |
-| Sub 32: Ridge regression of item text → logit µ_item | -0.5977 | 0.7019 | item-text signal w/o kNN |
-| **Sub 33: item-text k-NN within subject (K=20, BETA=0.4)** | **-0.5940** | **0.7083** | **new winner — first crack of -0.60 NLL** |
+| Reference: commit `40976e8` (mpnet + IRT + Newton-K=5) | -0.70 | 0.60 | within-pipeline reference; Newton-Raphson θ-update on the K=5 labels, no post-hoc calibration |
+| Sub 1: full-stack MLP + Platt + per-subject offset | -1.01 | 0.62 | high-capacity MLP+Platt+offset diagnostic (isolates calibration column under shifted distribution) |
+| Sub 5: MLP + identity Platt + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | MLP backbone + calibration-column-only post-hoc fix |
+| Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | α=0.5 MLP × subject-mean blend |
+| Sub 17: 0.3·sub 5 + 0.7·subject mean | -0.61 | 0.69 | α=0.3 MLP × subject-mean blend (AUC peak within MLP family) |
+| Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | per-subject prior with no encoder, MLP, or calibration — largest single lever |
+| Sub 28: 0.2·sub 5 + 0.8·subject mean | -0.60 | 0.69 | α=0.2 MLP × subject-mean blend |
+| Sub 32: Ridge regression of item text → logit µ_item | -0.5977 | 0.7019 | item-text signal without kNN neighborhood |
+| **Sub 33: item-text k-NN within subject (K=20, BETA=0.4)** | **-0.5940** | **0.7083** | **leaderboard winner — first sub-(-0.60) NLL** |
 
-The new winner adds **item-level signal**: for each test (s, item) we
-encode the item text with MPNet, retrieve the top-K most cosine-similar
-items the same subject already answered (PCA-256 compressed
-embeddings, softmax-weighted, temperature 0.05), and blend the
-per-neighborhood mean label with the smoothed subject mean
-(`BETA=0.4`). The 0.01-NLL gap between sub 33 (kNN + subj-mean
-fallback) and sub 28 (sub-5 blend) means **item-text k-NN dominates
-the MLP+Platt+T pipeline** once per-subject identity is available.
-Sub 32 (Ridge on item text, no neighborhood lookup) at -0.598
-confirms the signal is in the text itself, not just the
-neighborhood.
+Sub 33 adds **item-level signal**: for each test (subject, item)
+pair, we encode the item text with MPNet, retrieve the top-K most
+cosine-similar items the same subject has already answered
+(PCA-256 compressed embeddings, softmax-weighted, temperature
+0.05), and blend the per-neighborhood mean label with the smoothed
+subject mean (`BETA=0.4`). Sub 33 outperforms the
+α=0.2 MLP×subject-mean blend (sub 28) by 0.01 NLL with the same
+per-subject prior, so **item-text k-NN dominates the MLP+Platt+T
+pipeline** once per-subject identity is available. Sub 32 (Ridge
+on item text, no neighborhood lookup) at -0.598 confirms the
+signal is in the text itself, not just the neighborhood.
 
 ## Problem
 
