@@ -6,8 +6,8 @@ The ledger is the source of truth for everything we ship to Codabench:
   the sha256 of the deterministic ZIP contents),
 - offline validation numbers from the round simulator,
 - leaderboard scores once a round resolves,
-- the git context the ZIP was built from, so the best-scoring run can be
-  reproduced bit-for-bit for the Gradescope final upload.
+- the git context the ZIP was built from, so the best-scoring run's
+  source files at the repo root can be reproduced bit-for-bit.
 
 This module exposes a tiny API used by ``submit.py`` and the validation
 harness; the schema lives in :func:`init_db`.

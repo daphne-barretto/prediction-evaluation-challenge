@@ -14,10 +14,10 @@ The submission flow is intentionally manifest-driven and ZIP-deterministic:
 4. Once the round resolves, ``submit.py update <id> --leaderboard-nll X
    --leaderboard-auc Y --round-id Z`` patches the ledger row.
 
-The point: the ZIP we upload to Codabench, the one referenced by ``manifest_sha``
-in the ledger, and the one we hand to Gradescope at the end of the competition
-are all bit-for-bit identical. Gradescope is authoritative per the handbook, so
-this property has to hold for our best-scoring run.
+The point: the ZIP we upload to Codabench and the one referenced by
+``manifest_sha`` in the ledger are bit-for-bit identical; the `model.py` at
+the repo root (used for grading per the assignment instructions) is the
+exact source for the best-scoring submission's ZIP.
 
 Usage::
 

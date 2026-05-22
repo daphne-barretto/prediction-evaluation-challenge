@@ -21,6 +21,12 @@ artifacts/*.npy
 # Keep small JSON artifacts
 !artifacts/*.json
 
+# Keep the PCA-256 item embeddings (53 MB) — required by the root
+# model.py (sub 33, the best-scoring Codabench submission). All other
+# .npy artifacts are reproducible from train.py / train_modal.py /
+# precompute_modal.py and stay gitignored.
+!artifacts/item_embeddings_pca256_f16.npy
+
 # HuggingFace cache
 .hf_cache/
 
@@ -57,6 +63,3 @@ artifacts_baseline/
 
 # Local analysis dumps
 /tmp/cs_dump/
-
-# Gradescope bundle (regenerable from runs/ledger.db + runs/zips/)
-gradescope/
