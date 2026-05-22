@@ -1,0 +1,29 @@
+{
+  "model_name": "item_knn_dotprod",
+  "notes": "Round-4 ablation: sub 33 without per-query L2 normalization (raw dot product instead of cosine similarity). The index (item_emb_normed) is still normalized; only the test-query embedding is left unnormalized. Tests whether cosine vs raw dot product matters for top-K retrieval here.",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "similarity": "dot_product_unnormalized_query",
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}

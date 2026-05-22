@@ -1,0 +1,30 @@
+{
+  "model_name": "item_irt_2pl_nn",
+  "notes": "Round-4 F2 coverage closure: 2PL IRT prediction p=sigma(a*(theta_s - b)). theta_s is the trained 2PL ability for the subject (subject_name_lookup.json gives the value directly), and (a, b) are looked up from the nearest training item by MPNet+PCA256 cosine similarity. Item discrimination a is clipped to [0,4] (raw max ~1682). IRT prediction is blended with smoothed subject_mean at BETA=0.4 (same blend ratio as sub 33). Closes the F2 (latent factor) cell of the coverage table.",
+  "hyperparams": {
+    "alpha_subj_shrink": 0.1,
+    "beta": 0.4,
+    "a_clip_max": 4.0,
+    "irt_model": "2PL",
+    "item_lookup": "1-NN by mpnet+pca256 cosine",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/subject_name_lookup.json",
+    "artifacts/item_a.npy",
+    "artifacts/item_b.npy",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy"
+  ]
+}
