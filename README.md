@@ -17,8 +17,8 @@ our best-scoring submission:
 | Field | Value |
 |---|---|
 | Submission | Sub 33 — `item_knn_subject` |
-| Leaderboard NLL ↑ | −0.5940 |
-| Leaderboard AUC | 0.7083 |
+| Leaderboard NLL ↑ | **−0.5940** |
+| Leaderboard AUC | **0.7083** |
 | Manifest | [`manifests/item_knn_subject.json`](manifests/item_knn_subject.json) |
 | Source variant | [`variants/item_knn_subject/model.py`](variants/item_knn_subject/model.py) |
 
@@ -57,7 +57,7 @@ file matches the file list in `manifests/item_knn_subject.json` exactly.
 | Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | per-subject prior with no encoder, MLP, or calibration — largest single lever |
 | Sub 28: 0.2·sub 5 + 0.8·subject mean | -0.60 | 0.69 | α=0.2 MLP × subject-mean blend |
 | Sub 32: Ridge regression of item text → logit µ_item | -0.5977 | 0.7019 | item-text signal without kNN neighborhood |
-| Sub 33: item-text k-NN within subject (K=20, BETA=0.4) | -0.5940 | 0.7083 | leaderboard winner — first sub-(-0.60) NLL |
+| **Sub 33: item-text k-NN within subject (K=20, BETA=0.4)** | **-0.5940** | **0.7083** | **leaderboard winner — first sub-(-0.60) NLL** |
 
 Sub 33 adds item-level signal: for each test (subject, item)
 pair, we encode the item text with MPNet, retrieve the top-K most
