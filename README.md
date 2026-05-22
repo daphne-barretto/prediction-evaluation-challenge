@@ -1,24 +1,24 @@
 # Prediction Evaluation Challenge
 
-Predictive AI Evaluation Challenge — predict whether an AI subject will answer a benchmark item correctly, **without running the model on the item**.
+Predictive AI Evaluation Challenge — predict whether an AI subject will answer a benchmark item correctly, without running the model on the item.
 
 > 📄 The official competition handbook lives at [`docs/Predictive_Evaluation_Challenge.pdf`](docs/Predictive_Evaluation_Challenge.pdf). When this README and the handbook disagree, the handbook (plus any course-staff clarifications) wins.
 
-## This repository **is** the team's final code submission
+## This repository is the team's final code submission
 
 Per the assignment instructions and course-staff clarification, each
 team's final code is graded directly from this repository (there is
 no separate Gradescope upload). Slide 40 of the Part-V deck specifies
 the code deliverables: `model.py` plus `labeling.py` (if used) for
-the best-scoring Codabench submission, with the auxiliary files
+the best-scoring leaderboard submission, with the auxiliary files
 needed to reproduce that run. The files at the repo root reproduce
-our **best-scoring Codabench submission**:
+our best-scoring submission:
 
 | Field | Value |
 |---|---|
-| Submission | Sub 33 — `item_knn_subject` (Codabench run 746473) |
-| Leaderboard NLL ↑ | **−0.5940** |
-| Leaderboard AUC | **0.7083** |
+| Submission | Sub 33 — `item_knn_subject` (leaderboard run 746473) |
+| Leaderboard NLL ↑ | −0.5940 |
+| Leaderboard AUC | 0.7083 |
 | Manifest | [`manifests/item_knn_subject.json`](manifests/item_knn_subject.json) |
 | Source variant | [`variants/item_knn_subject/model.py`](variants/item_knn_subject/model.py) |
 
@@ -41,7 +41,7 @@ The files that ship with the winning submission, all at the repo root:
 | `artifacts/per_subject_responses.npz` | Sparse per-subject response history |
 | `artifacts/per_subject_responses_index.json` | Subject-name → row-index map |
 
-Sub 33 does **not** ship a `labeling.py`: the model ignores the round's adaptive
+Sub 33 does not ship a `labeling.py`: the model ignores the round's adaptive
 labels (the platform falls back to random label revelation), so omitting the
 file matches the file list in `manifests/item_knn_subject.json` exactly.
 
@@ -49,7 +49,7 @@ file matches the file list in `manifests/item_knn_subject.json` exactly.
 
 | Submission | NLL ↑ | AUC | What it does |
 |---|---:|---:|---|
-| Reference: commit `40976e8` (mpnet + IRT + Newton-K=5) | -0.70 | 0.60 | within-pipeline reference; Newton-Raphson θ-update on the K=5 labels, no post-hoc calibration |
+| Reference: team's earlier mpnet + IRT + Newton-K=5 submission | -0.70 | 0.60 | within-pipeline reference; Newton-Raphson θ-update on the K=5 labels, no post-hoc calibration |
 | Sub 1: full-stack MLP + Platt + per-subject offset | -1.01 | 0.62 | high-capacity MLP+Platt+offset diagnostic (isolates calibration column under shifted distribution) |
 | Sub 5: MLP + identity Platt + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | MLP backbone + calibration-column-only post-hoc fix |
 | Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | α=0.5 MLP × subject-mean blend |
@@ -57,23 +57,23 @@ file matches the file list in `manifests/item_knn_subject.json` exactly.
 | Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | per-subject prior with no encoder, MLP, or calibration — largest single lever |
 | Sub 28: 0.2·sub 5 + 0.8·subject mean | -0.60 | 0.69 | α=0.2 MLP × subject-mean blend |
 | Sub 32: Ridge regression of item text → logit µ_item | -0.5977 | 0.7019 | item-text signal without kNN neighborhood |
-| **Sub 33: item-text k-NN within subject (K=20, BETA=0.4)** | **-0.5940** | **0.7083** | **leaderboard winner — first sub-(-0.60) NLL** |
+| Sub 33: item-text k-NN within subject (K=20, BETA=0.4) | -0.5940 | 0.7083 | leaderboard winner — first sub-(-0.60) NLL |
 
-Sub 33 adds **item-level signal**: for each test (subject, item)
+Sub 33 adds item-level signal: for each test (subject, item)
 pair, we encode the item text with MPNet, retrieve the top-K most
 cosine-similar items the same subject has already answered
 (PCA-256 compressed embeddings, softmax-weighted, temperature
 0.05), and blend the per-neighborhood mean label with the smoothed
 subject mean (`BETA=0.4`). Sub 33 outperforms the
 α=0.2 MLP×subject-mean blend (sub 28) by 0.01 NLL with the same
-per-subject prior, so **item-text k-NN dominates the MLP+Platt+T
-pipeline** once per-subject identity is available. Sub 32 (Ridge
+per-subject prior, so item-text k-NN dominates the MLP+Platt+T
+pipeline once per-subject identity is available. Sub 32 (Ridge
 on item text, no neighborhood lookup) at -0.598 confirms the
 signal is in the text itself, not just the neighborhood.
 
 ## Problem
 
-Given four text fields describing a (subject, item, benchmark, condition) tuple, predict the probability that the subject answers the item correctly. This is a **cold-start** prediction problem: test items have no observed responses in the training matrix.
+Given four text fields describing a (subject, item, benchmark, condition) tuple, predict the probability that the subject answers the item correctly. This is a cold-start prediction problem: test items have no observed responses in the training matrix.
 
 ## Repository Structure
 
@@ -89,7 +89,7 @@ Given four text fields describing a (subject, item, benchmark, condition) tuple,
 │   ├── sub28_knn_combo/    # sub 28 — sub-5 + subject-mean blend
 │   └── ...                 # 40+ other ablations (see `python submit.py list`)
 ├── manifests/            # JSON manifests, one per submission (50 total)
-├── baseline_pkg/         # Frozen reproduction of the 40976e8 commit (mpnet + IRT)
+├── baseline_pkg/         # Frozen reproduction of the team's earlier mpnet + IRT + Newton-K=5 submission
 ├── train.py              # Offline training (subject/global means, item-mean lookups)
 ├── train_modal.py        # Modal-cloud MLP + Platt + T pipeline (subs 1–5 family)
 ├── precompute_modal.py   # Modal item embeddings, PCA, per-subject response tables
@@ -123,7 +123,7 @@ To rebuild the exact ZIP that was uploaded to Codabench (e.g., to verify
 
 ## Reproducing any other submission
 
-Every leaderboard submission is built from a **manifest** (in `manifests/`)
+Every leaderboard submission is built from a manifest (in `manifests/`)
 plus a per-submission `model.py` overlay (in `variants/<name>/`). The same
 manifest produces a byte-identical ZIP on any machine: ZIP entries are
 sorted and stamped with a fixed mtime, so `sha256(zip)` is stable. The
@@ -184,7 +184,7 @@ python submit.py update 33 \
    `python submit.py list`. The ZIP file path appears under
    `runs/zips/` and the manifest sha is recorded in the ledger.
 
-> **Codabench filename limit (≤ 64 chars):** `submit.py` enforces this
+> Filename limit (≤ 64 chars): `submit.py` enforces this
 > before building. ZIP names use the format
 > `<UTC-ts:20>__<model_name>__<short_sha[+dirty]>.zip`, so keep model
 > names ≤ ~22 chars (≤ ~17 when the working tree is dirty).
@@ -203,14 +203,14 @@ These are produced by:
 | `MODAL_PROFILE=cs336-2026 modal run --detach precompute_modal.py` | MPNet item embeddings (full + PCA-256), per-subject response tables, item-mean / subject×benchmark-mean lookups, ridge `item_diff_regressor.json` (subs 31–38 and the entire sub 33 family) |
 
 Each variant's `manifest.files[]` lists exactly which artifacts go into
-its ZIP, so a single train cycle supports many submissions. **Only the
+its ZIP, so a single train cycle supports many submissions. Only the
 6 artifacts called out at the top of this README are required for the
-winning sub-33 submission**; the rest are kept here to reproduce the
+winning sub-33 submission; the rest are kept here to reproduce the
 ablations referenced in the technical report.
 
 ## Loading Training Data
 
-The HuggingFace repo is a collection of Parquet tables, **not** a single `datasets` split. Do **not** use `load_dataset("aims-foundations/measurement-db")` directly — it may mix response tables with trace tables that have different schemas.
+The HuggingFace repo is a collection of Parquet tables, not a single `datasets` split. Do not use `load_dataset("aims-foundations/measurement-db")` directly — it may mix response tables with trace tables that have different schemas.
 
 Load response tables explicitly and join with registry tables:
 
@@ -261,13 +261,13 @@ Each input is a dict with four string keys:
 
 ## Metrics
 
-- **Primary**: Negative log-loss (higher is better)
-- **Secondary**: AUC-ROC (higher is better)
+- Primary: Negative log-loss (higher is better)
+- Secondary: AUC-ROC (higher is better)
 - Scored on N=1,000 items sampled per round with two-level stratification across data categories
 
 ## Adaptive Labeling
 
-Each round reveals K=5 ground-truth labels per category (m=5 categories per round → 25 labels total). Use `labeling.py` to define an acquisition function that selects which items get labeled. The labeled inputs are passed to `predict()` via the `labeled` argument. **The winning sub-33 submission ignores the `labeled` argument** (none of our top-5 leaderboard variants consumed it; see the technical report's Part V discussion).
+Each round reveals K=5 ground-truth labels per category (m=5 categories per round → 25 labels total). Use `labeling.py` to define an acquisition function that selects which items get labeled. The labeled inputs are passed to `predict()` via the `labeled` argument. The winning sub-33 submission ignores the `labeled` argument (none of our top-5 leaderboard variants consumed it; see the technical report's Part V discussion).
 
 ## GPU Tiers
 
@@ -283,8 +283,8 @@ Each round reveals K=5 ground-truth labels per category (m=5 categories per roun
 ## Rules
 
 - Teams of 1–3 students
-- Up to 50 scored submissions per team per calendar day (UTC) during the open Codabench rounds
-- Sandbox is **network-isolated** at test time — no API calls
+- Up to 50 scored submissions per team per calendar day (UTC) during the open leaderboard rounds
+- Sandbox is network-isolated at test time — no API calls
 - All models must be bundled in the ZIP or declared in `models.txt`
 - No state persists across rounds (fresh container each time)
 
@@ -294,7 +294,7 @@ Each round reveals K=5 ground-truth labels per category (m=5 categories per roun
 
 ## Grading
 
-- **Technical report (50%)**: NeurIPS 2025 LaTeX template, 4 pages max
-- **Code (50%)**: this repository (per the assignment, no separate Gradescope code upload). The grader reads the root `model.py` (+ `labeling.py` if present), `requirements.txt`, `models.txt`, and the listed `artifacts/` files to reproduce the best Codabench run.
-- **Leaderboard performance**: Best negative log-loss across all rounds, recorded in `runs/ledger.db` and shown by `python submit.py list`.
+- Technical report (50%): NeurIPS 2025 LaTeX template, 4 pages max
+- Code (50%): this repository (per the assignment, no separate Gradescope code upload). The grader reads the root `model.py` (+ `labeling.py` if present), `requirements.txt`, `models.txt`, and the listed `artifacts/` files to reproduce the best leaderboard run.
+- Leaderboard performance: Best negative log-loss across all rounds, recorded in `runs/ledger.db` and shown by `python submit.py list`.
 
