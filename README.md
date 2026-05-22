@@ -6,9 +6,13 @@ Predictive AI Evaluation Challenge — predict whether an AI subject will answer
 
 ## This repository **is** the team's final code submission
 
-Per the assignment instructions, each team's final code is graded directly from
-this repository (there is no separate Gradescope upload). The files at the repo
-root reproduce our **best-scoring Codabench submission**:
+Per the assignment instructions and course-staff clarification, each
+team's final code is graded directly from this repository (there is
+no separate Gradescope upload). Slide 40 of the Part-V deck specifies
+the code deliverables: `model.py` plus `labeling.py` (if used) for
+the best-scoring Codabench submission, with the auxiliary files
+needed to reproduce that run. The files at the repo root reproduce
+our **best-scoring Codabench submission**:
 
 | Field | Value |
 |---|---|
