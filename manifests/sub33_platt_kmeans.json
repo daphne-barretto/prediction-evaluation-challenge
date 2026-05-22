@@ -1,0 +1,38 @@
+{
+  "model_name": "sub33_platt_kmeans",
+  "notes": "Round-3 labeling.py ablation #6: same Platt consumption as sub33_label_platt, paired with a K-MEANS DIVERSITY acquisition_function (worked-example §3.6 design). Offline KMeans(n_clusters=64, random_state=0) fit on PCA-256 normalized training-item embeddings at module load; module-level Counter _seen tracks per-cluster visits within the round; score = -_seen[nearest_centroid] so first-of-its-cluster wins. K=5 picks per category then span 5 distinct semantic neighborhoods (assuming the pool covers them). This is the third row of the acquisition axis (random / uncertainty / OOD-diversity-centroid / kmeans-diversity-within-round).",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "lambda_a": 10.0,
+    "lambda_b": 10.0,
+    "newton_steps": 5,
+    "a_clamp": [0.5, 2.0],
+    "consumption": "logit_platt_2param",
+    "acquisition": "kmeans_diversity_within_round",
+    "kmeans_n_clusters": 64,
+    "kmeans_n_init": 10,
+    "kmeans_random_state": 0,
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "labeling.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}
