@@ -8,7 +8,7 @@ Predictive AI Evaluation Challenge — predict whether an AI subject will answer
 
 | Submission | NLL ↑ | AUC | What it does |
 |---|---:|---:|---|
-| Team submission, commit `40976e8` (MiniLM-L3 + IRT) | -0.70 | — | earlier team run |
+| Earlier submission, commit `40976e8` (MiniLM-L3 + IRT) | -0.70 | 0.60 | earlier `40976e8` run |
 | Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression diagnostic |
 | Sub 5: sub 3 + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | calibration recovery |
 | Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | first crack of the -0.65 plateau |
