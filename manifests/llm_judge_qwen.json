@@ -1,0 +1,21 @@
+{
+  "model_name": "llm_judge_qwen",
+  "notes": "Round-3 LLM-as-judge per worked-example §3.5: literal implementation of the JUDGE template + next-token logits read of yes/no. Uses Qwen2.5-0.5B-Instruct (the smallest Qwen2.5 instruct model, ~500M params, ~1 GB in bf16) so the per-round compute budget on Codabench T4 is comfortable; the §3.5 spec itself notes a smaller backbone is the standard way to fit per-tier budget. Moves the F5 cell of tab:coverage from × to ✓. Zero-shot only: labeled[] is unused in this baseline (the spec's 'stronger variant' is in-context calibration via labeled[] few-shot examples; we deliberately ship the zero-shot variant first as the literal §3.5 NCF-equivalent of sub 33).",
+  "hyperparams": {
+    "backbone": "Qwen/Qwen2.5-0.5B-Instruct",
+    "dtype": "bfloat16 (cuda) / float32 (cpu)",
+    "template": "literal §3.5 JUDGE raw-text template (not chat-templated)",
+    "decoding": "read next-token log-prob of YES_ID and NO_ID, renormalize over {yes,no}",
+    "uses_labeled": false,
+    "uses_subject_artifacts": false,
+    "uses_item_embeddings": false
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt"
+  ]
+}

@@ -5,3 +5,9 @@
 # labeling.py. Current pipeline uses all-mpnet-base-v2 (768-d sentence
 # embeddings).
 sentence-transformers/all-mpnet-base-v2
+# Used by variants/llm_judge_qwen/ (worked-example §3.5 LLM-as-judge).
+# Other variants do not import this model; pre-fetching it costs
+# ~1 GB of warm cache per container but the platform serves from a
+# shared HF cache, so the marginal init cost for non-LLM variants is
+# the cache hit only.
+Qwen/Qwen2.5-0.5B-Instruct
