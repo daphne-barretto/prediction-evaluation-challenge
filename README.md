@@ -10,20 +10,25 @@ Predictive AI Evaluation Challenge — predict whether an AI subject will answer
 |---|---:|---:|---|
 | Team submission, commit `40976e8` (MiniLM-L3 + IRT) | -0.70 | — | earlier team run |
 | Sub 1: full mpnet rewrite (Platt + per-subject offset) | -1.01 | 0.62 | regression diagnostic |
-| Sub 2: mpnet, no Platt (offset on) | -0.93 | 0.63 | -Platt |
-| Sub 3: mpnet, no Platt, no offset | -0.85 | 0.63 | -offset |
 | Sub 5: sub 3 + post-hoc T-scaling (T=4.073) | -0.65 | 0.63 | calibration recovery |
 | Sub 13: 0.5·sub 5 + 0.5·subject mean | -0.61 | 0.67 | first crack of the -0.65 plateau |
-| Sub 17: 0.3·sub 5 + 0.7·subject mean | -0.61 | 0.69 | AUC champion |
+| Sub 17: 0.3·sub 5 + 0.7·subject mean | -0.61 | 0.69 | (then-)AUC champion |
 | Sub 21: smoothed subject-mean lookup (no MLP) | -0.61 | 0.68 | lookup ties full pipeline |
-| **Sub 28: 0.2·sub 5 + 0.8·subject mean** | **-0.60** | **0.69** | **new winner — first crack of the -0.61 plateau** |
+| Sub 28: 0.2·sub 5 + 0.8·subject mean | -0.60 | 0.69 | first crack of the -0.61 plateau |
+| Sub 32: Ridge regression of item text → logit µ_item | -0.5977 | 0.7019 | item-text signal w/o kNN |
+| **Sub 33: item-text k-NN within subject (K=20, BETA=0.4)** | **-0.5940** | **0.7083** | **new winner — first crack of -0.60 NLL** |
 
-T-scaling is fit on a held-out cold-start val split via `dump_cs_logits.py` (Modal job that
-reconstructs the inference-time feature matrix and minimises val NLL over a single scalar).
-See [`variants/sub5_t_scaled/model.py`](variants/sub5_t_scaled/model.py) for the integration.
-Sub 28's α=0.20 blend sits in a sharp local NLL minimum: subs 27 (α=0.15) and 17 (α=0.30)
-both tie at -0.61 on either side. The content head buys ranking (AUC 0.69) and a
-final 0.01 NLL at α=0.20 on top of the per-subject identity floor of -0.61.
+The new winner adds **item-level signal**: for each test (s, item) we
+encode the item text with MPNet, retrieve the top-K most cosine-similar
+items the same subject already answered (PCA-256 compressed
+embeddings, softmax-weighted, temperature 0.05), and blend the
+per-neighborhood mean label with the smoothed subject mean
+(`BETA=0.4`). The 0.01-NLL gap between sub 33 (kNN + subj-mean
+fallback) and sub 28 (sub-5 blend) means **item-text k-NN dominates
+the MLP+Platt+T pipeline** once per-subject identity is available.
+Sub 32 (Ridge on item text, no neighborhood lookup) at -0.598
+confirms the signal is in the text itself, not just the
+neighborhood.
 
 ## Problem
 
