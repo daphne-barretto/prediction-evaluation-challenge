@@ -1,0 +1,34 @@
+{
+  "model_name": "sub33_label_platt",
+  "notes": "Round-3 labeling.py ablation #2: sub 33 + 2-param Platt scaling (a, b) fit on labeled[] in logit space by Newton-Raphson (5 steps) with ridge prior lambda=10 toward identity (a=1, b=0). a clamped to [0.5, 2.0]. Hypothesis: with K=25 labels and strong identity prior, (a, b) -> (1, 0) so the variant ties sub 33; provides a 2-dof upper bound on what label-driven recalibration can buy. No labeling.py (random platform fallback).",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "lambda_a": 10.0,
+    "lambda_b": 10.0,
+    "newton_steps": 5,
+    "a_clamp": [0.5, 2.0],
+    "consumption": "logit_platt_2param",
+    "acquisition": "random_platform_fallback",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}

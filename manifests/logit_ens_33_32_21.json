@@ -1,0 +1,35 @@
+{
+  "model_name": "logit_ens_33_32_21",
+  "notes": "Round-3 beat-best stab: 3-way equal-weight logit-space ensemble of sub 33 (item-text kNN within subject), sub 32 (Ridge on item text), and sub 21 (smoothed subject_mean lookup). z_final = (z33 + z32 + z21) / 3. Prior tries: sub 45 (prob mean of 33+32) = -0.61; sub 54 (logit mean of 33+32) = -0.60. The new ingredient is sub 21 as a third channel providing pure subject-prior diversity (no item signal). No labeling.py (random platform fallback).",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "gamma32": 0.5,
+    "alpha_subj_shrink": 0.1,
+    "weights": [0.3333, 0.3333, 0.3333],
+    "blend_space": "logit",
+    "components": ["sub33", "sub32", "sub21"],
+    "consumption": "none",
+    "acquisition": "random_platform_fallback",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json",
+    "artifacts/item_diff_regressor.json"
+  ]
+}

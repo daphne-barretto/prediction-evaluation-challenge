@@ -24,15 +24,23 @@ MANIFEST="manifests/$VARIANT.json"
 # Save current root model.py / labeling.py so we can restore them after build.
 mv -f model.py model.py.user
 HAS_LABEL_OVERRIDE=0
+ROOT_HAD_LABELING=0
 if [[ -f "$VARIANT_DIR/labeling.py" ]]; then
-    mv -f labeling.py labeling.py.user
+    if [[ -f labeling.py ]]; then
+        mv -f labeling.py labeling.py.user
+        ROOT_HAD_LABELING=1
+    fi
     HAS_LABEL_OVERRIDE=1
 fi
 
 restore() {
     mv -f model.py.user model.py
     if [[ "$HAS_LABEL_OVERRIDE" = "1" ]]; then
-        mv -f labeling.py.user labeling.py
+        if [[ "$ROOT_HAD_LABELING" = "1" ]]; then
+            mv -f labeling.py.user labeling.py
+        else
+            rm -f labeling.py
+        fi
     fi
 }
 trap restore EXIT

@@ -1,0 +1,35 @@
+{
+  "model_name": "sub33_platt_uncert",
+  "notes": "Round-3 labeling.py ablation #4: same Platt consumption as sub33_label_platt, paired with an UNCERTAINTY-based acquisition_function (score = -|p_sub33 - 0.5|). Within each category the platform reveals the 5 items where sub 33 is least confident. Hypothesis: uncertainty acquisition concentrates the K=25 label budget where the Platt Hessian is densest; if Platt + random is a no-op but Platt + uncertainty recovers NLL, the bottleneck was acquisition not consumption.",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "lambda_a": 10.0,
+    "lambda_b": 10.0,
+    "newton_steps": 5,
+    "a_clamp": [0.5, 2.0],
+    "consumption": "logit_platt_2param",
+    "acquisition": "uncertainty_min_distance_to_half",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "labeling.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}

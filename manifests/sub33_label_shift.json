@@ -1,0 +1,32 @@
+{
+  "model_name": "sub33_label_shift",
+  "notes": "Round-3 labeling.py ablation #1: sub 33 + single global logit-space mean-residual shift fit from labeled[] (n=25), ridge LAMBDA=25 toward 0, capped +/-0.5 in logit. Sub 14's design transplanted to sub 33. Hypothesis: sub 33 is already well-calibrated so the shift -> 0 and the variant ties sub 33. No labeling.py (random platform fallback).",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "ridge_lambda": 25.0,
+    "shift_cap": 0.5,
+    "consumption": "global_logit_shift",
+    "acquisition": "random_platform_fallback",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}

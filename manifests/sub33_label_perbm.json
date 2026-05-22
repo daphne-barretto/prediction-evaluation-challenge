@@ -1,0 +1,34 @@
+{
+  "model_name": "sub33_label_perbm",
+  "notes": "Round-3 labeling.py ablation #3: sub 33 + per-benchmark logit-space shift fit from labeled[]. For each benchmark with >=2 labels, ridge LAMBDA_BM=5 toward 0, capped +/-0.5; benchmarks with <2 labels fall back to a global shift (LAMBDA=25). Hypothesis: F2 residuals are per-benchmark, so localized shifts recover more signal than the single global shift at the cost of higher variance per cell. No labeling.py (random platform fallback).",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "lambda_global": 25.0,
+    "lambda_per_bm": 5.0,
+    "shift_cap": 0.5,
+    "min_bm_labels": 2,
+    "consumption": "per_benchmark_logit_shift",
+    "acquisition": "random_platform_fallback",
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json"
+  ]
+}
