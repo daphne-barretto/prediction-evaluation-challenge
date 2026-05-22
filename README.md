@@ -16,7 +16,7 @@ our best-scoring submission:
 
 | Field | Value |
 |---|---|
-| Submission | Sub 33 — `item_knn_subject` (leaderboard run 746473) |
+| Submission | Sub 33 — `item_knn_subject` |
 | Leaderboard NLL ↑ | −0.5940 |
 | Leaderboard AUC | 0.7083 |
 | Manifest | [`manifests/item_knn_subject.json`](manifests/item_knn_subject.json) |
@@ -166,7 +166,7 @@ After the round resolves on Codabench, back-fill the leaderboard score:
 python submit.py update 33 \
   --leaderboard-nll -0.5940 \
   --leaderboard-auc 0.7083 \
-  --round-id 746473
+  --round-id <round_id>
 ```
 
 ### Add a new variant
