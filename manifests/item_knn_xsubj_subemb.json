@@ -1,0 +1,32 @@
+{
+  "model_name": "item_knn_xsubj_subemb",
+  "notes": "Round-4 follow-up to sub 65 (xsubj_subsim, LB -0.63): cross-subject k-NN where each retrieved response is reweighted by COSINE SIMILARITY between learned 768-d subject embeddings (instead of sub 65's Gaussian on subject-mean-accuracy gap). Tests whether the learned subject_embeddings.npy carries richer relevance signal than per-subject mean accuracy alone. GAMMA=5.0 on the embedding cosine.",
+  "hyperparams": {
+    "k": 20,
+    "softmax_temperature": 0.05,
+    "beta": 0.4,
+    "alpha_subj_shrink": 0.1,
+    "gamma_subj_emb_sharpness": 5.0,
+    "encoder": "sentence-transformers/all-mpnet-base-v2",
+    "encoder_dim": 768,
+    "clip_range": [0.001, 0.999],
+    "retrieval_scope": "global_reweighted_by_subj_emb_cosine",
+    "parent_submission_id": 33
+  },
+  "val_nll_mean": null,
+  "val_nll_std": null,
+  "val_auc": null,
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "models.txt",
+    "artifacts/subject_mean_acc.json",
+    "artifacts/global_mean_acc.json",
+    "artifacts/item_embeddings_pca256_f16.npy",
+    "artifacts/item_pca_components.npy",
+    "artifacts/per_subject_responses.npz",
+    "artifacts/per_subject_responses_index.json",
+    "artifacts/subject_embeddings.npy",
+    "artifacts/subject_emb_index.json"
+  ]
+}
